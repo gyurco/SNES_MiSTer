@@ -784,16 +784,6 @@ end process;
 
 DO <= D_OUT;
 
-				 
-VMADD_TRANS <= VMADD(15 downto  8) & VMADD(4 downto 0) & VMADD(7 downto 5) when VMAIN_ADDRTRANS = "01" else 
-					VMADD(15 downto  9) & VMADD(5 downto 0) & VMADD(8 downto 6) when VMAIN_ADDRTRANS = "10" else 
-					VMADD(15 downto 10) & VMADD(6 downto 0) & VMADD(9 downto 7) when VMAIN_ADDRTRANS = "11" else 
-					VMADD(15 downto  0);
-					
-VRAM1_WRITE <= '1' when PAWR_N = '0' and PA = x"18" and (BG_FORCE_BLANK = '1' or IN_VBL = '1') else '0';
-VRAM2_WRITE <= '1' when PAWR_N = '0' and PA = x"19" and (BG_FORCE_BLANK = '1' or IN_VBL = '1') else '0';			
-
-		
 VRAM_ADDRA <= DBG_VRAM_ADDR(16 downto 1) when ENABLE = '0' else
 				  BG_VRAM_ADDRA when BG_FETCH = '1' and BG_FORCE_BLANK = '0'else 
 				  OBJ_VRAM_ADDR when OBJ_FETCH = '1' and FORCE_BLANK = '0' else
@@ -802,15 +792,36 @@ VRAM_ADDRB <= DBG_VRAM_ADDR(16 downto 1) when ENABLE = '0' else
 				  BG_VRAM_ADDRB when BG_FETCH = '1' and BG_FORCE_BLANK = '0'else 
 				  OBJ_VRAM_ADDR when OBJ_FETCH = '1' and FORCE_BLANK= '0' else
 				  VMADD_TRANS;			 
-				 
 
-VRAM_DAO <= DI;
-VRAM_DBO <= DI;
 VRAM_RD_N <= '0' when ENABLE = '0' else VRAM1_WRITE or VRAM2_WRITE;
 VRAM_WRA_N <= '1' when ENABLE = '0' else not VRAM1_WRITE;
 VRAM_WRB_N <= '1' when ENABLE = '0' else not VRAM2_WRITE;
 
+process( RST_N, CLK )
+begin
+	if RST_N = '0' then
+		VRAM1_WRITE <= '0';
+		VRAM2_WRITE <= '0';
+	elsif rising_edge(CLK) then
+		if ENABLE = '1' and SYSCLK_CE = '1' then
+			VRAM_DAO <= DI;
+			VRAM_DBO <= DI;
+			case VMAIN_ADDRTRANS is
+			when "01" => VMADD_TRANS <= VMADD(15 downto  8) & VMADD(4 downto 0) & VMADD(7 downto 5);
+			when "10" => VMADD_TRANS <= VMADD(15 downto  9) & VMADD(5 downto 0) & VMADD(8 downto 6);
+			when "11" => VMADD_TRANS <= VMADD(15 downto 10) & VMADD(6 downto 0) & VMADD(9 downto 7);
+			when others => VMADD_TRANS <= VMADD(15 downto  0);
+			end case;
 
+			VRAM1_WRITE <= '0';
+			VRAM2_WRITE <= '0';
+			if PAWR_N = '0' and (BG_FORCE_BLANK = '1' or IN_VBL = '1') then
+				if PA = x"18" then VRAM1_WRITE <= '1'; end if;
+				if PA = x"19" then VRAM2_WRITE <= '1'; end if;
+			end if;
+		end if;
+	end if;
+end process;
 
 --HV counters
 process( PAL, BGINTERLACE, FIELD, V_CNT )
