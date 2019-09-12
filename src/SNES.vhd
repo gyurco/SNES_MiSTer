@@ -25,7 +25,7 @@ entity SNES is
 		PAWR_N		: out std_logic;
 		DI				: in std_logic_vector(7 downto 0);
 		DO				: out std_logic_vector(7 downto 0);
-		
+
 		RAMSEL_N		: out std_logic;
 		ROMSEL_N		: out std_logic;
 		
@@ -41,7 +41,8 @@ entity SNES is
 		WSRAM_CE_N	: out std_logic;
 		WSRAM_OE_N	: out std_logic;
 		WSRAM_WE_N	: out std_logic;
-		
+		WSRAM_RD_N	: out std_logic;
+
 		VRAM_ADDRA	: out std_logic_vector(15 downto 0);
 		VRAM_ADDRB	: out std_logic_vector(15 downto 0);
 		VRAM_DAI		: in std_logic_vector(7 downto 0);
@@ -119,6 +120,8 @@ architecture rtl of SNES is
 	signal JPIO67 : std_logic_vector(7 downto 6);
 	signal INT_SYSCLKF_CE	: std_logic;
 	signal INT_SYSCLKR_CE	: std_logic;
+	signal INT_CPURD_CYC_N : std_logic;
+	signal INT_PARD_CYC_N : std_logic;
 
 	signal BUSB_DO	: std_logic_vector(7 downto 0);
 	signal BUSA_SEL : std_logic;
@@ -217,7 +220,10 @@ begin
 		PAWR_N		=> INT_PAWR_N,
 		DI				=> GENIE_DI,
 		DO				=> CPU_DO,
-		
+
+		CPURD_CYC_N		=> INT_CPURD_CYC_N,
+		PARD_CYC_N		=> INT_PARD_CYC_N,
+
 		RAMSEL_N		=> INT_RAMSEL_N,
 		ROMSEL_N		=> INT_ROMSEL_N,
 		
@@ -279,7 +285,10 @@ begin
 		PA				=> INT_PA,
 		PARD_N		=> INT_PARD_N,
 		PAWR_N		=> INT_PAWR_N,
-		
+
+		CPURD_CYC_N		=> INT_CPURD_CYC_N,
+		PARD_CYC_N		=> INT_PARD_CYC_N,
+
 		DI				=> WRAM_DI,
 		DO				=> WRAM_DO,
 		
@@ -289,7 +298,8 @@ begin
 		RAM_WE_N		=> WSRAM_WE_N,
 		RAM_CE_N		=> WSRAM_CE_N,
 		RAM_OE_N		=> WSRAM_OE_N,
-		
+		RAM_RD_N		=> WSRAM_RD_N,
+
 		DBG_REG     => DBG_REG,
 		DBG_DAT_OUT => DBG_WRAM_DAT,
 		DBG_DAT_IN	=> DBG_DAT_IN,
