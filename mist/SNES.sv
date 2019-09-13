@@ -322,7 +322,7 @@ end
 
 always @(*) begin
 	rom_req = rom_req_reg;
-	if ((~cart_download && ~ROM_CE_N && ~ROM_OE_N && rom_addr_sd != rom_addr_sd_last) || ((ioctl_wrD ^ ioctl_wr) & cart_download))
+	if ((~cart_download && ~ROM_CE_N /*&& ~ROM_OE_N */&& rom_addr_sd != rom_addr_sd_last) || ((ioctl_wrD ^ ioctl_wr) & cart_download))
 		rom_req = ~rom_req;
 
 	wram_req = wram_req_reg;
@@ -568,19 +568,19 @@ mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(6), .OSD_AUTO_CE(1'b0)) mist_video
 //////////////////   AUDIO   //////////////////
 wire [15:0] audioL, audioR;
 
-jt12_dac2 #(16) dacl
+hybrid_pwm_sd dacl
 (
 	.clk(clk_sys),
-	.rst(reset),
-	.din(audioL),
+	.n_reset(~reset),
+	.din({~audioL[15], audioL[14:0]}),
 	.dout(AUDIO_L)
 );
 
-jt12_dac2 #(16) dacr
+hybrid_pwm_sd dacr
 (
 	.clk(clk_sys),
-	.rst(reset),
-	.din(audioR),
+	.n_reset(~reset),
+	.din({~audioR[15], audioR[14:0]}),
 	.dout(AUDIO_R)
 );
 
