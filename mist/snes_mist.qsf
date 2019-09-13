@@ -299,8 +299,8 @@ set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
 set_global_assignment -name SYSTEMVERILOG_FILE SNES.sv
 set_global_assignment -name SYSTEMVERILOG_FILE sdram.sv
 set_global_assignment -name VERILOG_FILE data_io.v
-set_global_assignment -name VERILOG_FILE jt12_dac2.v
 set_global_assignment -name SDC_FILE snes_mist.sdc
+set_global_assignment -name VERILOG_FILE hybrid_pwm_sd.v
 set_global_assignment -name QIP_FILE mist.qip
 set_global_assignment -name QIP_FILE pll.qip
 set_global_assignment -name SYSTEMVERILOG_FILE ../ioport.sv
