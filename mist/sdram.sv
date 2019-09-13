@@ -143,10 +143,15 @@ end
 // wait 1ms (32 8Mhz cycles) after FPGA config is done before going
 // into normal operation. Initialize the ram in the last 16 reset cycles (cycles 15-0)
 reg [4:0]  reset;
+reg        init = 1'b1;
 always @(posedge clk,negedge init_n) begin
-	if(!init_n) reset <= 5'h1f;
-	else if((t == STATE_LAST) && (reset != 0))
-		reset <= reset - 5'd1;
+	if(!init_n) begin
+		reset <= 5'h1f;
+		init <= 1'b1;
+	end else begin
+		if((t == STATE_LAST) && (reset != 0)) reset <= reset - 5'd1;
+		init <= !(reset == 0);
+	end
 end
 
 // ---------------------------------------------------------------------
@@ -230,7 +235,7 @@ always @(posedge clk) begin
 	{ SDRAM_DQMH, SDRAM_DQML } <= 2'b00;
 	sd_cmd <= CMD_INHIBIT;  // default: idle
 
-	if(reset != 0) begin
+	if(init) begin
 		refresh <= 1'b0;
 		// initialization takes place at the end of the reset phase
 		if(t == STATE_RAS0) begin
@@ -379,7 +384,7 @@ always @(posedge clk) begin
 
 		// CAS phase
 		// ROM, WRAM
-		if(t == STATE_CAS0 && (we_latch[0] || oe_latch[0])) begin
+		if(t == STATE_CAS0 && port[0] != PORT_NONE) begin
 			sd_cmd <= we_latch[0]?CMD_WRITE:CMD_READ;
 			if (we_latch[0]) begin
 				SDRAM_DQ <= din_latch[0];
@@ -396,22 +401,19 @@ always @(posedge clk) begin
 		end
 
 		// ARAM
-		if(t == STATE_CAS1 && (we_latch[1] || oe_latch[1])) begin
+		if(t == STATE_CAS1 && port[1] == PORT_ARAM) begin
 			sd_cmd <= we_latch[1]?CMD_WRITE:CMD_READ;
 			if (we_latch[1]) begin
 				SDRAM_DQ <= din_latch[1];
 				{ SDRAM_DQMH, SDRAM_DQML } <= ~ds[1];
 			end
-			case (port[1])
-				PORT_ARAM:  aram_req_ack <= aram_req;
-				default: ;
-			endcase
+			aram_req_ack <= aram_req;
 			sd_a <= { 4'b0010, addr_latch[1][9:1] };  // auto precharge
 			SDRAM_BA <= addr_latch[1][24:23];
 		end
 
 		// VRAM
-		if(t == STATE_CAS2 && (we_latch[2] || oe_latch[2])) begin
+		if(t == STATE_CAS2 && port[2] != PORT_NONE) begin
 			sd_cmd <= we_latch[2]?CMD_WRITE:CMD_READ;
 			if (we_latch[2]) begin
 				SDRAM_DQ <= din_latch[2];
@@ -440,10 +442,7 @@ always @(posedge clk) begin
 
 		// ARAM
 		if(t == STATE_READ1 && oe_latch[1]) begin
-			case (port[1])
-				PORT_ARAM:  aram_dout <= addr_latch[1][0] ? SDRAM_DQ[15:8] : SDRAM_DQ[7:0];
-				default: ;
-			endcase
+			aram_dout <= addr_latch[1][0] ? SDRAM_DQ[15:8] : SDRAM_DQ[7:0];
 		end
 
 		// VRAM
@@ -452,6 +451,14 @@ always @(posedge clk) begin
 				PORT_VRAM: { vram2_dout, vram1_dout } <= SDRAM_DQ;
 				PORT_VRAM1: vram1_dout <= SDRAM_DQ[7:0];
 				PORT_VRAM2: vram2_dout <= SDRAM_DQ[15:8];
+				default: ;
+			endcase
+		end
+		if(t == STATE_READ2 && we_latch[2]) begin
+			case (port[2])
+				PORT_VRAM: { vram2_dout, vram1_dout } <= { vram2_din, vram1_din };
+				PORT_VRAM1: vram1_dout <= vram1_din;
+				PORT_VRAM2: vram2_dout <= vram2_din;
 				default: ;
 			endcase
 		end
