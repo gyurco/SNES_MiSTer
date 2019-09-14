@@ -456,9 +456,9 @@ always @(posedge clk) begin
 		end
 		if(t == STATE_READ2 && we_latch[2]) begin
 			case (port[2])
-				PORT_VRAM: { vram2_dout, vram1_dout } <= { vram2_din, vram1_din };
-				PORT_VRAM1: vram1_dout <= vram1_din;
-				PORT_VRAM2: vram2_dout <= vram2_din;
+				PORT_VRAM: { vram2_dout, vram1_dout } <= din_latch[2];
+				PORT_VRAM1: vram1_dout <= din_latch[2][7:0];
+				PORT_VRAM2: vram2_dout <= din_latch[2][7:0];
 				default: ;
 			endcase
 		end
