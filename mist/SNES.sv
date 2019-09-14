@@ -146,7 +146,7 @@ user_io #(.STRLEN($size(CONF_STR)>>3)) user_io
 
 	.status(status),
 	.scandoubler_disable(scandoubler_disable),
-//	.ypbpr(ypbpr),
+	.ypbpr(ypbpr),
 	.buttons(buttons),
 	.joystick_0(joystick0),
 	.joystick_1(joystick1),
