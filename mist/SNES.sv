@@ -292,7 +292,7 @@ always @(posedge clk_sys) begin
 		aram_addr_last <= 16'haaaa;
 		wram_addr_last <= 17'h1aaaa;
 	end else begin
-		rom_addr_sd_last <= rom_addr_sd;
+		if (rom_req ^ rom_req_reg) rom_addr_sd_last <= rom_addr_sd;
 
 		wram_req_reg <= wram_req;
 		wram_rdD <= wram_rd;
