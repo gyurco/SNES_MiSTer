@@ -59,6 +59,13 @@ module sdram (
 	output reg        bsram_req_ack,
 	input             bsram_we,
 
+	input      [19:1] bsram_io_addr,
+	input      [15:0] bsram_io_din,
+	output reg [15:0] bsram_io_dout,
+	input             bsram_io_req,
+	output reg        bsram_io_req_ack,
+	input             bsram_io_we,
+
 	input             vram1_req,
 	output reg        vram1_ack,
 	input      [14:0] vram1_addr,
@@ -192,7 +199,8 @@ localparam PORT_VRAM  = 3'd3;
 localparam PORT_VRAM1 = 3'd4;
 localparam PORT_VRAM2 = 3'd5;
 localparam PORT_ARAM  = 3'd6;
-localparam PORT_BSRAM = 3'd7;
+localparam PORT_BSRAM = 3'd4;
+localparam PORT_BSRAM_IO = 3'd5;
 
 reg[2:0] port[3];
 reg[2:0] next_port[3];
@@ -208,6 +216,7 @@ always @(posedge clk) begin
 	else if (rom_req ^ rom_req_ack)   next_port[0] <= PORT_ROM;
 	else if (wram_req ^ wram_req_ack) next_port[0] <= PORT_WRAM;
 	else if (bsram_req ^ bsram_req_ack) next_port[0] <= PORT_BSRAM;
+	else if (bsram_io_req ^ bsram_io_req_ack) next_port[0] <= PORT_BSRAM_IO;
 	else next_port[0] <= PORT_NONE;
 end
 
@@ -297,6 +306,17 @@ always @(posedge clk) begin
 				SDRAM_BA <= 2'b01;
 				addr_latch[0] <= { 5'b01111, bsram_addr };
 				port[0] <= PORT_BSRAM;
+				sd_cmd <= CMD_ACTIVE;
+			end
+
+			PORT_BSRAM_IO: begin
+				{ we_latch[0], oe_latch[0] } <= { bsram_io_we, ~bsram_io_we };
+				din_latch[0] <= bsram_io_din;
+				ds[0] <= 2'b11;
+				sd_a <= { 3'b111, bsram_io_addr[19:10] };
+				SDRAM_BA <= 2'b01;
+				addr_latch[0] <= { 5'b01111, bsram_io_addr, 1'b0 };
+				port[0] <= PORT_BSRAM_IO;
 				sd_cmd <= CMD_ACTIVE;
 			end
 
@@ -394,6 +414,7 @@ always @(posedge clk) begin
 				PORT_ROM:   rom_req_ack <= rom_req;
 				PORT_WRAM:  wram_req_ack <= wram_req;
 				PORT_BSRAM: bsram_req_ack <= bsram_req;
+				PORT_BSRAM_IO: bsram_io_req_ack <= bsram_io_req;
 				default: ;
 			endcase
 			sd_a <= { 4'b0010, addr_latch[0][9:1] };  // auto precharge
@@ -430,12 +451,13 @@ always @(posedge clk) begin
 		end
 
 		// read phase
-		// ROM, WRAM
+		// ROM, WRAM, BSRAM
 		if(t == STATE_READ0 && oe_latch[0]) begin
 			case (port[0])
 				PORT_ROM:   rom_dout <= SDRAM_DQ;
 				PORT_WRAM:  wram_dout <= addr_latch[0][0] ? SDRAM_DQ[15:8] : SDRAM_DQ[7:0];
 				PORT_BSRAM: bsram_dout <= addr_latch[0][0] ? SDRAM_DQ[15:8] : SDRAM_DQ[7:0];
+				PORT_BSRAM_IO: bsram_io_dout <= SDRAM_DQ;
 				default: ;
 			endcase
 		end
