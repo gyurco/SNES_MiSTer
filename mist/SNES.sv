@@ -53,12 +53,14 @@ module SNES_MIST_TOP
    output        SDRAM_CKE
 );
 
-assign LED  = ~ioctl_download;
+assign LED  = ~ioctl_download & ~bk_ena;
 
 `include "build_id.v"
 parameter CONF_STR = {
 	"SNES;;",
 	"F,SFCBIN,Load;",
+	"S,SAV,Mount;",
+	"TF,Write Save RAM;",
 	"OE,Video Region,NTSC,PAL;",
 	"OAB,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;",
 	"OG,Blend,On,Off;",
@@ -77,6 +79,7 @@ wire [1:0] mouse_mode = status[6:5];
 wire       joy_swap = status[7];
 wire       multitap = status[17];
 wire       BLEND = ~status[16];
+wire       bk_save = status[15];
 
 ////////////////////   CLOCKS   ///////////////////
 
@@ -130,6 +133,7 @@ wire  [8:0] sd_buff_addr;
 wire  [7:0] sd_buff_dout;
 wire  [7:0] sd_buff_din;
 wire        sd_buff_wr;
+wire        sd_buff_rd;
 wire        img_mounted;
 wire [31:0] img_size;
 
@@ -169,6 +173,7 @@ user_io #(.STRLEN($size(CONF_STR)>>3)) user_io
 	.sd_dout(sd_buff_dout),
 	.sd_din(sd_buff_din),
 	.sd_dout_strobe(sd_buff_wr),
+	.sd_din_strobe(sd_buff_rd),
 	.img_mounted(img_mounted),
 	.img_size(img_size)
 );
@@ -369,6 +374,13 @@ sdram sdram
 	.bsram_req(bsram_req),
 	.bsram_req_ack(),
 	.bsram_we(~BSRAM_WE_N),
+
+	.bsram_io_addr(BSRAM_IO_ADDR),
+	.bsram_io_din(BSRAM_IO_D),
+	.bsram_io_dout(BSRAM_IO_Q),
+	.bsram_io_req(bsram_io_req),
+	.bsram_io_req_ack(),
+	.bsram_io_we(bk_load),
 
 	.vram1_req(reset ? vram_rst_req : vram1_req),
 	.vram1_ack(),
@@ -633,5 +645,91 @@ ioport port2
 	.MOUSE(ps2_mouse),
 	.MOUSE_EN(mouse_mode[1])
 );
+
+//////////////////////////// BACKUP RAM /////////////////////
+reg  [19:1] BSRAM_IO_ADDR;
+wire [15:0] BSRAM_IO_D;
+wire [15:0] BSRAM_IO_Q;
+reg  [15:0] bsram_io_q_save;
+reg         bsram_io_req;
+reg         bk_ena, bk_load;
+reg  [11:0] sav_size;
+
+assign      sd_buff_din = sd_buff_addr[0] ? bsram_io_q_save[15:8] : bsram_io_q_save[7:0];
+
+always @(posedge clk_sys) begin
+
+	reg img_mountedD;
+	reg ioctl_downloadD;
+	reg bk_state;
+	reg bk_loadD, bk_saveD;
+	reg sd_ackD;
+
+	if (reset) begin
+		bk_ena <= 0;
+		bk_state <= 0;
+		bk_load <= 0;
+	end else begin
+		img_mountedD <= img_mounted;
+		if (~img_mountedD & img_mounted) begin
+			if (|img_size) begin
+				bk_ena <= 1;
+				bk_load <= 1;
+				sav_size <= img_size[20:9];
+			end else begin
+				bk_ena <= 0;
+			end
+		end
+
+		ioctl_downloadD <= ioctl_download;
+		if (~ioctl_downloadD & ioctl_download) bk_ena <= 0;
+
+		bk_loadD <= bk_load;
+		bk_saveD <= bk_save;
+		sd_ackD  <= sd_ack;
+
+		if (~sd_ackD & sd_ack) { sd_rd, sd_wr } <= 2'b00;
+
+		case (bk_state)
+		0:	if (bk_ena && ((~bk_loadD & bk_load) || (~bk_saveD & bk_save))) begin
+				bk_state <= 1;
+				sd_lba <= 0;
+				sd_rd <= bk_load;
+				sd_wr <= ~bk_load;
+				if (bk_save) begin
+					BSRAM_IO_ADDR <= 0;
+					bsram_io_req <= ~bsram_io_req;
+				end else
+					BSRAM_IO_ADDR <= 19'h7ffff;
+			end
+		1:	if (sd_ackD & ~sd_ack) begin
+				if (sd_lba[11:0] == sav_size) begin
+					bk_load <= 0;
+					bk_state <= 0;
+				end else begin
+					sd_lba <= sd_lba + 1'd1;
+					sd_rd  <= bk_load;
+					sd_wr  <= ~bk_load;
+				end
+			end
+		endcase
+
+		if (sd_buff_wr) begin
+			if (sd_buff_addr[0]) begin
+				BSRAM_IO_D[15:8] <= sd_buff_dout;
+				bsram_io_req <= ~bsram_io_req;
+				BSRAM_IO_ADDR <= BSRAM_IO_ADDR + 1'd1;
+			end else
+				BSRAM_IO_D[7:0] <= sd_buff_dout;
+		end
+
+		if (~sd_buff_addr[0]) bsram_io_q_save <= BSRAM_IO_Q;
+
+		if (sd_buff_rd & sd_buff_addr[0]) begin
+			bsram_io_req <= ~bsram_io_req;
+			BSRAM_IO_ADDR <= BSRAM_IO_ADDR + 1'd1;
+		end
+	end
+end
 
 endmodule
