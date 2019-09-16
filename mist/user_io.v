@@ -548,8 +548,10 @@ always @(posedge clk_sd) begin
 
 				// send sector FPGA -> IO
 				8'h18: begin
-					sd_din_strobe <= 1'b1;
-					if(~&sd_buff_addr) sd_buff_addr <= sd_buff_addr + 1'b1;
+					if(~&sd_buff_addr) begin
+						sd_din_strobe <= 1'b1;
+						sd_buff_addr <= sd_buff_addr + 1'b1;
+					end
 				end
 
 				// send SD config IO -> FPGA
