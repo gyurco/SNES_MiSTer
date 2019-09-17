@@ -193,14 +193,17 @@ reg        we_latch[3];
 reg  [1:0] ds[3];
 
 localparam PORT_NONE  = 3'd0;
+
 localparam PORT_ROM   = 3'd1;
 localparam PORT_WRAM  = 3'd2;
-localparam PORT_VRAM  = 3'd3;
-localparam PORT_VRAM1 = 3'd4;
-localparam PORT_VRAM2 = 3'd5;
-localparam PORT_ARAM  = 3'd6;
-localparam PORT_BSRAM = 3'd4;
-localparam PORT_BSRAM_IO = 3'd5;
+localparam PORT_BSRAM = 3'd3;
+localparam PORT_BSRAM_IO = 3'd4;
+
+localparam PORT_ARAM  = 3'd1;
+
+localparam PORT_VRAM  = 3'd1;
+localparam PORT_VRAM1 = 3'd2;
+localparam PORT_VRAM2 = 3'd3;
 
 reg[2:0] port[3];
 reg[2:0] next_port[3];
@@ -241,7 +244,7 @@ always @(posedge clk) begin
 
 	// permanently latch ram data to reduce delays
 	SDRAM_DQ <= 16'bZZZZZZZZZZZZZZZZ;
-	{ SDRAM_DQMH, SDRAM_DQML } <= 2'b00;
+	{ SDRAM_DQMH, SDRAM_DQML } <= 2'b11;
 	sd_cmd <= CMD_INHIBIT;  // default: idle
 
 	if(init) begin
@@ -430,7 +433,7 @@ always @(posedge clk) begin
 			end
 			aram_req_ack <= aram_req;
 			sd_a <= { 4'b0010, addr_latch[1][9:1] };  // auto precharge
-			SDRAM_BA <= addr_latch[1][24:23];
+			SDRAM_BA <= 2'b10;
 		end
 
 		// VRAM
@@ -447,11 +450,12 @@ always @(posedge clk) begin
 				default: ;
 			endcase
 			sd_a <= { 4'b0010, addr_latch[2][9:1] };  // auto precharge
-			SDRAM_BA <= addr_latch[2][24:23];
+			SDRAM_BA <= 2'b11;
 		end
 
 		// read phase
 		// ROM, WRAM, BSRAM
+		if(t == STATE_DS0 && oe_latch[0]) { SDRAM_DQMH, SDRAM_DQML } <= 2'b00;
 		if(t == STATE_READ0 && oe_latch[0]) begin
 			case (port[0])
 				PORT_ROM:   rom_dout <= SDRAM_DQ;
@@ -463,11 +467,13 @@ always @(posedge clk) begin
 		end
 
 		// ARAM
+		if(t == STATE_DS1 && oe_latch[1]) { SDRAM_DQMH, SDRAM_DQML } <= 2'b00;
 		if(t == STATE_READ1 && oe_latch[1]) begin
 			aram_dout <= addr_latch[1][0] ? SDRAM_DQ[15:8] : SDRAM_DQ[7:0];
 		end
 
 		// VRAM
+		if(t == STATE_DS2 && oe_latch[2]) { SDRAM_DQMH, SDRAM_DQML } <= 2'b00;
 		if(t == STATE_READ2 && oe_latch[2]) begin
 			case (port[2])
 				PORT_VRAM: { vram2_dout, vram1_dout } <= SDRAM_DQ;
