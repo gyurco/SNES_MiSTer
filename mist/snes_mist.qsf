@@ -185,7 +185,7 @@ set_global_assignment -name OPTIMIZE_MULTI_CORNER_TIMING ON
 
 
 set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE output_files/vram.stp
+set_global_assignment -name USE_SIGNALTAP_FILE output_files/bsram.stp
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "NO HEAT SINK WITH STILL AIR"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
@@ -323,6 +323,7 @@ set_global_assignment -name SIGNALTAP_FILE output_files/ram.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/dio.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/cpu.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/vram.stp
-set_global_assignment -name SEED 2
+set_global_assignment -name SEED 1
 set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS OFF
+set_global_assignment -name SIGNALTAP_FILE output_files/bsram.stp
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
