@@ -91,6 +91,7 @@ parameter USE_SDD1 = 1'b1;
 parameter USE_GSU = 1'b1;
 parameter USE_SA1 = 1'b1;
 parameter USE_DSPn = 1'b1;
+parameter USE_SPC7110 = 1'b1;
 
 wire [23:0] CA;
 wire        CPURD_N;
