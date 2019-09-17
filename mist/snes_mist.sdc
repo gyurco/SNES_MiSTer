@@ -51,8 +51,8 @@ set_output_delay -clock [get_clocks {pll|altpll_component|auto_generated|pll1|cl
 set_output_delay -clock [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -max 1.5 [get_ports {SDRAM_D* SDRAM_A* SDRAM_BA* SDRAM_n* SDRAM_CKE}]
 set_output_delay -clock [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -min -0.8 [get_ports {SDRAM_D* SDRAM_A* SDRAM_BA* SDRAM_n* SDRAM_CKE}]
 
-set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -setup -end 3
-set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -hold -end 2
+set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -setup -end 4
+set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -hold -end 3
 
 set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -setup -start 3
 set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -hold -start 2
