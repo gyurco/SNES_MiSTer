@@ -140,7 +140,7 @@ reg [2:0] t;
 
 always @(posedge clk) begin
 	t <= t + 1'd1;
-	if (t == STATE_LAST) t <= STATE_RAS0;
+//	if (t == STATE_LAST) t <= STATE_RAS0;
 end
 
 // ---------------------------------------------------------------------
@@ -213,8 +213,8 @@ reg [10:0] refresh_cnt;
 wire       need_refresh = (refresh_cnt >= RFRSH_CYCLES);
 
 // ROM: bank 0,1
-// WRAM: bank 1
-always @(posedge clk) begin
+// WRAM, BSRAM: bank 1
+always @(*) begin
 	if (refresh) next_port[0] <= PORT_NONE;
 	else if (rom_req ^ rom_req_ack)   next_port[0] <= PORT_ROM;
 	else if (wram_req ^ wram_req_ack) next_port[0] <= PORT_WRAM;
@@ -224,14 +224,14 @@ always @(posedge clk) begin
 end
 
 // ARAM: bank 2
-always @(posedge clk) begin
+always @(*) begin
 	if (refresh) next_port[1] <= PORT_NONE;
 	else if (aram_req ^ aram_req_ack) next_port[1] <= PORT_ARAM;
 	else next_port[1] <= PORT_NONE;
 end
 
 // VRAM: bank 3
-always @(posedge clk) begin
+always @(*) begin
 	if ((vram1_req ^ vram1_ack) && (vram2_req ^ vram2_ack) && (vram1_addr == vram2_addr) && (vram1_we == vram2_we))
 		// 16 bit VRAM access
 		next_port[2] <= PORT_VRAM;
@@ -249,6 +249,7 @@ always @(posedge clk) begin
 
 	if(init) begin
 		refresh <= 1'b0;
+
 		// initialization takes place at the end of the reset phase
 		if(t == STATE_RAS0) begin
 
@@ -407,12 +408,16 @@ always @(posedge clk) begin
 
 		// CAS phase
 		// ROM, WRAM
-		if(t == STATE_CAS0 && port[0] != PORT_NONE) begin
+		if(t == STATE_CAS0 && (oe_latch[0] || we_latch[0])) begin
 			sd_cmd <= we_latch[0]?CMD_WRITE:CMD_READ;
 			if (we_latch[0]) begin
 				SDRAM_DQ <= din_latch[0];
 				{ SDRAM_DQMH, SDRAM_DQML } <= ~ds[0];
 			end
+			sd_a <= { 4'b0010, addr_latch[0][9:1] };  // auto precharge
+			SDRAM_BA <= addr_latch[0][24:23];
+		end
+		if(t == STATE_CAS0) begin
 			case (port[0])
 				PORT_ROM:   rom_req_ack <= rom_req;
 				PORT_WRAM:  wram_req_ack <= wram_req;
@@ -420,12 +425,10 @@ always @(posedge clk) begin
 				PORT_BSRAM_IO: bsram_io_req_ack <= bsram_io_req;
 				default: ;
 			endcase
-			sd_a <= { 4'b0010, addr_latch[0][9:1] };  // auto precharge
-			SDRAM_BA <= addr_latch[0][24:23];
 		end
 
 		// ARAM
-		if(t == STATE_CAS1 && port[1] == PORT_ARAM) begin
+		if(t == STATE_CAS1 && (oe_latch[1] || we_latch[1])) begin
 			sd_cmd <= we_latch[1]?CMD_WRITE:CMD_READ;
 			if (we_latch[1]) begin
 				SDRAM_DQ <= din_latch[1];
@@ -437,20 +440,22 @@ always @(posedge clk) begin
 		end
 
 		// VRAM
-		if(t == STATE_CAS2 && port[2] != PORT_NONE) begin
+		if(t == STATE_CAS2 && (oe_latch[2] || we_latch[2])) begin
 			sd_cmd <= we_latch[2]?CMD_WRITE:CMD_READ;
 			if (we_latch[2]) begin
 				SDRAM_DQ <= din_latch[2];
 				{ SDRAM_DQMH, SDRAM_DQML } <= ~ds[2];
 			end
+			sd_a <= { 4'b0010, addr_latch[2][9:1] };  // auto precharge
+			SDRAM_BA <= 2'b11;
+		end
+		if(t == STATE_CAS2) begin
 			case (port[2])
 				PORT_VRAM:   { vram1_ack, vram2_ack } <= { vram1_req, vram2_req };
 				PORT_VRAM1:  vram1_ack <= vram1_req;
 				PORT_VRAM2:  vram2_ack <= vram2_req;
 				default: ;
 			endcase
-			sd_a <= { 4'b0010, addr_latch[2][9:1] };  // auto precharge
-			SDRAM_BA <= 2'b11;
 		end
 
 		// read phase
