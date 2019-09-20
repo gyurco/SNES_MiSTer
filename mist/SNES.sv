@@ -205,35 +205,36 @@ always @(posedge clk_sys) ioctl_wrD <= ioctl_wr;
 ////////////////////////////  SDRAM  ///////////////////////////////////
 
 wire [23:0] ROM_ADDR;
-wire [23:1] rom_addr_sd = cart_download ? ioctl_addr[23:1] : ROM_ADDR[23:1];
-reg  [23:1] rom_addr_sd_last;
+wire [23:1] rom_addr_rw = cart_download ? ioctl_addr[23:1] : ROM_ADDR[23:1];
+reg  [23:1] rom_addr_sd;
 wire        ROM_CE_N;
 wire        ROM_OE_N;
 wire        ROM_WORD;
 wire [15:0] ROM_Q = (ROM_WORD || ~ROM_ADDR[0]) ? rom_dout : { rom_dout[7:0], rom_dout[15:8] };
 wire [15:0] rom_dout;
-wire        rom_req;
-reg         rom_req_reg;
+reg         rom_req;
 
 wire [16:0] WRAM_ADDR;
-wire [16:0] wram_addr_last;
+reg  [16:0] wram_addr_sd;
 wire        WRAM_CE_N;
 wire        WRAM_OE_N;
 wire        WRAM_RD_N;
 wire        WRAM_WE_N;
 wire  [7:0] WRAM_Q, WRAM_D;
+reg   [7:0] wram_din;
 wire        wram_rd = ~WRAM_CE_N & ~WRAM_RD_N;
 reg         wram_rdD;
 wire        wram_wr = ~WRAM_CE_N & ~WRAM_WE_N;
 reg         wram_wrD;
 wire        wram_req;
-reg         wram_req_reg;
 
 wire [19:0] BSRAM_ADDR;
+reg  [19:0] bsram_sd_addr;
 wire        BSRAM_CE_N;
 wire        BSRAM_OE_N;
 wire        BSRAM_WE_N;
 wire  [7:0] BSRAM_Q, BSRAM_D;
+reg   [7:0] bsram_din;
 wire        bsram_rd = ~BSRAM_CE_N & ~BSRAM_OE_N;
 reg         bsram_rdD;
 wire        bsram_wr = ~BSRAM_CE_N & ~BSRAM_WE_N;
@@ -244,7 +245,7 @@ reg         bsram_req_reg;
 wire        VRAM_OE_N;
 
 wire [15:0] VRAM1_ADDR;
-reg  [14:0] vram1_addr_last;
+reg  [14:0] vram1_addr_sd;
 wire        VRAM1_WE_N;
 wire  [7:0] VRAM1_D, VRAM1_Q;
 wire        vram1_req;
@@ -252,7 +253,7 @@ reg         vram1_req_reg;
 reg         vram1_we_nD;
 
 wire [15:0] VRAM2_ADDR;
-reg  [14:0] vram2_addr_last;
+reg  [14:0] vram2_addr_sd;
 wire        VRAM2_WE_N;
 wire  [7:0] VRAM2_D, VRAM2_Q;
 wire        vram2_req;
@@ -260,11 +261,12 @@ reg         vram2_req_reg;
 reg         vram2_we_nD;
 
 wire [15:0] ARAM_ADDR;
-reg  [15:0] aram_addr_last;
+reg  [15:0] aram_addr_sd;
 wire        ARAM_CE_N;
 wire        ARAM_OE_N;
 wire        ARAM_WE_N;
 wire  [7:0] ARAM_Q, ARAM_D;
+reg   [7:0] aram_din;
 wire        aram_rd = ~ARAM_CE_N & ~ARAM_OE_N;
 reg         aram_rd_last;
 wire        aram_wr = ~ARAM_CE_N & ~ARAM_WE_N;
@@ -272,66 +274,61 @@ reg         aram_wr_last;
 wire        aram_req;
 wire        aram_req_reg;
 
-always @(posedge clk_sys) begin
+always @(negedge clk_sys) begin
 
-	rom_req_reg <= rom_req;
+	reg ioctl_wr_last;
+
+	ioctl_wr_last <= ioctl_wr;
+
+	if ((~cart_download && ~ROM_CE_N /*&& ~ROM_OE_N */&& rom_addr_sd != rom_addr_rw) || ((ioctl_wr_last ^ ioctl_wr) & cart_download)) begin
+		rom_req <= ~rom_req;
+		rom_addr_sd <= rom_addr_rw;
+	end
 
 	if (reset) begin
-		rom_addr_sd_last <= 0;
-		vram1_addr_last <= 15'h7fff;
-		vram2_addr_last <= 15'h7fff;
-		aram_addr_last <= 16'haaaa;
-		wram_addr_last <= 17'h1aaaa;
+		aram_addr_sd <= 16'haaaa;
+		wram_addr_sd <= 17'h1aaaa;
+		vram1_addr_sd <= 15'h7fff;
+		vram2_addr_sd <= 15'h7fff;
 	end else begin
-		if (rom_req ^ rom_req_reg) rom_addr_sd_last <= rom_addr_sd;
 
-		wram_req_reg <= wram_req;
 		wram_rdD <= wram_rd;
 		wram_wrD <= wram_wr;
-		if (wram_req ^ wram_req_reg) wram_addr_last <= WRAM_ADDR;
+		if ((wram_rd && WRAM_ADDR != wram_addr_sd) || (~wram_wrD & wram_wr) || (~wram_rdD & wram_rd)) begin
+			wram_req <= ~wram_req;
+			wram_addr_sd <= WRAM_ADDR;
+			wram_din <= WRAM_D;
+		end
 
-		bsram_req_reg <= bsram_req;
 		bsram_rdD <= bsram_rd;
 		bsram_wrD <= bsram_wr;
+		if ((~bsram_wrD & bsram_wr) || (~bsram_rdD & bsram_rd)) begin
+			bsram_req = ~bsram_req;
+			bsram_sd_addr <= BSRAM_ADDR;
+			bsram_din <= BSRAM_D;
+		end
 
-		aram_req_reg <= aram_req;
-		if (aram_req ^ aram_req_reg) begin
-			aram_addr_last <= ARAM_ADDR;
+		if (((aram_rd || aram_wr) && (ARAM_ADDR != aram_addr_sd)) || (aram_rd & ~aram_rd_last) || (aram_wr & ~aram_wr_last)) begin
+			aram_req = ~aram_req;
+			aram_addr_sd <= ARAM_ADDR;
+			aram_din <= ARAM_D;
 			aram_wr_last <= aram_wr;
 			aram_rd_last <= aram_rd;
 		end
 
-		vram1_req_reg <= vram1_req;
 		vram1_we_nD <= VRAM1_WE_N;
-		if (vram1_req_reg ^ vram1_req) vram1_addr_last <= VRAM1_ADDR[14:0];
+		if ((vram1_we_nD & ~VRAM1_WE_N) || (VRAM1_ADDR[14:0] != vram1_addr_sd && ~VRAM_OE_N)) begin
+			vram1_addr_sd <= VRAM1_ADDR[14:0];
+			vram1_req = ~vram1_req;
+		end
 
-		vram2_req_reg <= vram2_req;
 		vram2_we_nD <= VRAM2_WE_N;
-		if (vram2_req_reg ^ vram2_req) vram2_addr_last <= VRAM2_ADDR[14:0];
+		if ((vram2_we_nD & ~VRAM2_WE_N) || (VRAM2_ADDR[14:0] != vram2_addr_sd && ~VRAM_OE_N)) begin
+			vram2_addr_sd <= VRAM2_ADDR[14:0];
+			vram2_req = ~vram2_req;
+		end
 	end
-end
 
-always @(*) begin
-	rom_req = rom_req_reg;
-	if ((~cart_download && ~ROM_CE_N /*&& ~ROM_OE_N */&& rom_addr_sd != rom_addr_sd_last) || ((ioctl_wrD ^ ioctl_wr) & cart_download))
-		rom_req = ~rom_req;
-
-	wram_req = wram_req_reg;
-	if ((wram_rd && WRAM_ADDR != wram_addr_last) || (~wram_wrD & wram_wr) || (~wram_rdD & wram_rd)) wram_req = ~wram_req;
-
-	bsram_req = bsram_req_reg;
-	if ((~bsram_wrD & bsram_wr) || (~bsram_rdD & bsram_rd)) bsram_req = ~bsram_req;
-
-	aram_req = aram_req_reg;
-	if (((aram_rd || aram_wr) && (ARAM_ADDR != aram_addr_last)) || (aram_rd & ~aram_rd_last) || (aram_wr & ~aram_wr_last)) aram_req = ~aram_req;
-
-	vram1_req = vram1_req_reg;
-	if ((vram1_we_nD & ~VRAM1_WE_N) || (VRAM1_ADDR[14:0] != vram1_addr_last && ~VRAM_OE_N))
-		vram1_req = ~vram1_req;
-
-	vram2_req = vram2_req_reg;
-	if ((vram2_we_nD & ~VRAM2_WE_N) || (VRAM2_ADDR[14:0] != vram2_addr_last && ~VRAM_OE_N))
-		vram2_req = ~vram2_req;
 end
 
 sdram sdram
@@ -347,19 +344,23 @@ sdram sdram
 	.rom_req_ack(),
 	.rom_we(cart_download),
 
-	.wram_addr(WRAM_ADDR),
+	.wram_addr(wram_addr_sd),
+//	.wram_din(wram_din),
 	.wram_din(WRAM_D),
 	.wram_dout(WRAM_Q),
 	.wram_req(wram_req),
 	.wram_req_ack(),
-	.wram_we(~WRAM_WE_N),
+//	.wram_we(~WRAM_WE_N),
+	.wram_we(wram_wrD),
 
-	.bsram_addr(BSRAM_ADDR),
+	.bsram_addr(bsram_sd_addr),
+//	.bsram_din(bsram_din),
 	.bsram_din(BSRAM_D),
 	.bsram_dout(BSRAM_Q),
 	.bsram_req(bsram_req),
 	.bsram_req_ack(),
-	.bsram_we(~BSRAM_WE_N),
+//	.bsram_we(~BSRAM_WE_N),
+	.bsram_we(bsram_wrD),
 
 	.bsram_io_addr(BSRAM_IO_ADDR),
 	.bsram_io_din(BSRAM_IO_D),
@@ -370,20 +371,20 @@ sdram sdram
 
 	.vram1_req(vram1_req),
 	.vram1_ack(),
-	.vram1_addr(VRAM1_ADDR[14:0]),
+	.vram1_addr(vram1_addr_sd),
 	.vram1_din(VRAM1_D),
 	.vram1_dout(VRAM1_Q),
 	.vram1_we(~VRAM1_WE_N),
 
 	.vram2_req(vram2_req),
 	.vram2_ack(),
-	.vram2_addr(VRAM2_ADDR[14:0]),
+	.vram2_addr(vram2_addr_sd),
 	.vram2_din(VRAM2_D),
 	.vram2_dout(VRAM2_Q),
 	.vram2_we(~VRAM2_WE_N),
 
-	.aram_addr(ARAM_ADDR),
-	.aram_din(ARAM_D),
+	.aram_addr(aram_addr_sd),
+	.aram_din(aram_din),
 	.aram_dout(ARAM_Q),
 	.aram_req(aram_req),
 	.aram_req_ack(),
