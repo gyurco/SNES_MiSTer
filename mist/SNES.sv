@@ -401,6 +401,7 @@ reg        PAL;
 reg  [7:0] rom_type;
 reg  [7:0] rom_type_header;
 reg  [7:0] mapper_header;
+reg  [7:0] company_header;
 reg  [3:0] rom_size;
 reg [23:0] rom_mask, ram_mask;
 
@@ -421,24 +422,27 @@ always @(posedge clk_sys) begin
 			if(ioctl_addr == { hdr_prefix, 15'h7FD4 }) mapper_header <= ioctl_dout[15:8];
 			if(ioctl_addr == { hdr_prefix, 15'h7FD6 }) { rom_size, rom_type_header } <= ioctl_dout[11:0];
 			if(ioctl_addr == { hdr_prefix, 15'h7FD8 }) ram_size <= ioctl_dout[3:0];
+			if(ioctl_addr == { hdr_prefix, 15'h7FDA }) company_header <= ioctl_dout[7:0];
 
 			rom_mask <= (24'd1024 << ((rom_size < 4'd7) ? 4'hC : rom_size)) - 1'd1;
 			ram_mask <= ram_size ? (24'd1024 << ram_size) - 1'd1 : 24'd0;
 
-			//DSP1
-			if (((mapper_header == 8'h20 || mapper_header == 8'h21) && rom_type_header == 8'd3) ||
-			    (mapper_header == 8'h30 && rom_type_header == 8'd5) || 
-			    (mapper_header == 8'h31 && (rom_type_header == 8'd3 || rom_type_header == 8'd5))) rom_type[7] <= 1'b1;
-			//DSP2
-			else if (mapper_header == 8'h20 && rom_type_header == 8'd5) rom_type[7:4] <= 4'h9;
-			//DSP4
-			else if (mapper_header == 8'h30 && rom_type_header == 8'd3) rom_type[7:4] <= 4'hB;
-			//OBC1
-			//else if (mapper_header == 8'h30 && rom_type_header == 8'h25) rom_type[7:4] <= 4'hC;
 		end
 	end
 	else begin
 		PAL <= video_region;
+		//DSP3
+		if (mapper_header == 8'h30 && rom_type_header == 8'd5 && company_header == 8'hB2) rom_type[7:4] <= 4'hA;
+		//DSP1
+		else if (((mapper_header == 8'h20 || mapper_header == 8'h21) && rom_type_header == 8'd3) ||
+		    (mapper_header == 8'h30 && rom_type_header == 8'd5) || 
+		    (mapper_header == 8'h31 && (rom_type_header == 8'd3 || rom_type_header == 8'd5))) rom_type[7] <= 1'b1;
+		//DSP2
+		else if (mapper_header == 8'h20 && rom_type_header == 8'd5) rom_type[7:4] <= 4'h9;
+		//DSP4
+		else if (mapper_header == 8'h30 && rom_type_header == 8'd3) rom_type[7:4] <= 4'hB;
+		//OBC1
+		//else if (mapper_header == 8'h30 && rom_type_header == 8'h25) rom_type[7:4] <= 4'hC;
 	end
 end
 
