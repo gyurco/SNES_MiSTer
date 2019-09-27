@@ -249,6 +249,7 @@ wire [15:0] VRAM1_ADDR;
 reg  [14:0] vram1_addr_sd;
 wire        VRAM1_WE_N;
 wire  [7:0] VRAM1_D, VRAM1_Q;
+reg   [7:0] vram1_din;
 wire        vram1_req;
 reg         vram1_req_reg;
 reg         vram1_we_nD;
@@ -257,6 +258,7 @@ wire [15:0] VRAM2_ADDR;
 reg  [14:0] vram2_addr_sd;
 wire        VRAM2_WE_N;
 wire  [7:0] VRAM2_D, VRAM2_Q;
+reg   [7:0] vram2_din;
 wire        vram2_req;
 reg         vram2_req_reg;
 reg         vram2_we_nD;
@@ -309,23 +311,25 @@ always @(negedge clk_sys) begin
 			bsram_din <= BSRAM_D;
 		end
 
+		aram_wr_last <= aram_wr;
+		aram_rd_last <= aram_rd;
 		if (((aram_rd || aram_wr) && (ARAM_ADDR != aram_addr_sd)) || (aram_rd & ~aram_rd_last) || (aram_wr & ~aram_wr_last)) begin
 			aram_req = ~aram_req;
 			aram_addr_sd <= ARAM_ADDR;
 			aram_din <= ARAM_D;
-			aram_wr_last <= aram_wr;
-			aram_rd_last <= aram_rd;
 		end
 
 		vram1_we_nD <= VRAM1_WE_N;
 		if ((vram1_we_nD & ~VRAM1_WE_N) || (VRAM1_ADDR[14:0] != vram1_addr_sd && ~VRAM_OE_N)) begin
 			vram1_addr_sd <= VRAM1_ADDR[14:0];
+			vram1_din <= VRAM1_D;
 			vram1_req = ~vram1_req;
 		end
 
 		vram2_we_nD <= VRAM2_WE_N;
 		if ((vram2_we_nD & ~VRAM2_WE_N) || (VRAM2_ADDR[14:0] != vram2_addr_sd && ~VRAM_OE_N)) begin
 			vram2_addr_sd <= VRAM2_ADDR[14:0];
+			vram2_din <= VRAM2_D;
 			vram2_req = ~vram2_req;
 		end
 	end
@@ -373,23 +377,28 @@ sdram sdram
 	.vram1_req(vram1_req),
 	.vram1_ack(),
 	.vram1_addr(vram1_addr_sd),
-	.vram1_din(VRAM1_D),
+//	.vram1_din(VRAM1_D),
+	.vram1_din(vram1_din),
 	.vram1_dout(VRAM1_Q),
-	.vram1_we(~VRAM1_WE_N),
+//	.vram1_we(~VRAM1_WE_N),
+	.vram1_we(~vram1_we_nD),
 
 	.vram2_req(vram2_req),
 	.vram2_ack(),
 	.vram2_addr(vram2_addr_sd),
-	.vram2_din(VRAM2_D),
+//	.vram2_din(VRAM2_D),
+	.vram2_din(vram2_din),
 	.vram2_dout(VRAM2_Q),
-	.vram2_we(~VRAM2_WE_N),
+//	.vram2_we(~VRAM2_WE_N),
+	.vram2_we(~vram2_we_nD),
 
 	.aram_addr(aram_addr_sd),
 	.aram_din(aram_din),
 	.aram_dout(ARAM_Q),
 	.aram_req(aram_req),
 	.aram_req_ack(),
-	.aram_we(~ARAM_WE_N)
+//	.aram_we(~ARAM_WE_N)
+	.aram_we(aram_wr_last)
 );
 
 assign SDRAM_CKE = 1'b1;
