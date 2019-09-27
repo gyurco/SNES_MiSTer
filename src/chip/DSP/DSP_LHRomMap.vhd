@@ -20,6 +20,7 @@ entity DSP_LHRomMap is
 		DO				: out std_logic_vector(7 downto 0);
 		CPURD_N		: in std_logic;
 		CPUWR_N		: in std_logic;
+		CPURD_CYC_N	: in std_logic;
 		
 		PA				: in std_logic_vector(7 downto 0);
 		PARD_N		: in std_logic;
@@ -46,6 +47,7 @@ entity DSP_LHRomMap is
 		BSRAM_CE_N	: out std_logic;
 		BSRAM_OE_N	: out std_logic;
 		BSRAM_WE_N	: out std_logic;
+		BSRAM_RD_N  : out std_logic;
 
 		MAP_ACTIVE  : out std_logic;
 		MAP_CTRL		: in std_logic_vector(7 downto 0);
@@ -265,6 +267,7 @@ begin
 	BSRAM_ADDR <= "0000000" & OBC1_SRAM_A when OBC1_SEL = '1' else BRAM_ADDR and BSRAM_MASK(19 downto 0);
 	BSRAM_CE_N <= not (BSRAM_SEL or OBC1_SEL);
 	BSRAM_OE_N <= CPURD_N;
+	BSRAM_RD_N <= CPURD_CYC_N;
 	BSRAM_WE_N <= CPUWR_N;
 	BSRAM_D    <= OBC1_SRAM_DO when OBC1_SEL = '1' else DI;
 	
