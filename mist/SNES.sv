@@ -277,6 +277,8 @@ reg         aram_wr_last;
 wire        aram_req;
 wire        aram_req_reg;
 
+wire        DOT_CLK_CE;
+
 always @(negedge clk_sys) begin
 
 	reg ioctl_wr_last;
@@ -341,6 +343,7 @@ sdram sdram
 	.*,
 	.init_n(locked),
 	.clk(clk_mem),
+	.clkref(DOT_CLK_CE),
 
 	.rom_addr(rom_addr_sd),
 	.rom_din(ioctl_dout),
@@ -523,6 +526,7 @@ main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GS
 	.INTERLACE(),
 	.HIGH_RES(),
 	.DOTCLK(),
+	.DOT_CLK_CE(DOT_CLK_CE),
 
 	.HBLANKn(HBLANKn),
 	.VBLANKn(VBLANKn),
