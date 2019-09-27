@@ -21,6 +21,7 @@ module main (
    output reg        BSRAM_CE_N,
    output reg        BSRAM_OE_N,
    output reg        BSRAM_WE_N,
+   output reg        BSRAM_RD_N,
 
    output     [16:0] WRAM_ADDR,
    output      [7:0] WRAM_D,
@@ -98,6 +99,7 @@ parameter USE_SPC7110 = 1'b1;
 wire [23:0] CA;
 wire        CPURD_N;
 wire        CPUWR_N;
+wire        CPURD_CYC_N;
 reg   [7:0] DI;
 wire  [7:0] DO;
 wire        RAMSEL_N;
@@ -123,6 +125,7 @@ SNES SNES
 	.ca(CA),
 	.cpurd_n(CPURD_N),
 	.cpuwr_n(CPUWR_N),
+	.cpurd_cyc_n(CPURD_CYC_N),
 
 	.pa(PA),
 	.pard_n(PARD_N),
@@ -209,6 +212,7 @@ wire  [7:0] DLH_BSRAM_D;
 wire        DLH_BSRAM_CE_N;
 wire        DLH_BSRAM_OE_N;
 wire        DLH_BSRAM_WE_N;
+wire        DLH_BSRAM_RD_N;
 
 generate
 if (USE_DLH == 1'b1) begin
@@ -223,6 +227,7 @@ DSP_LHRomMap #(.USE_DSPn(USE_DSPn)) DSP_LHRomMap
 	.do(DLH_DO),
 	.cpurd_n(CPURD_N),
 	.cpuwr_n(CPUWR_N),
+	.cpurd_cyc_n(CPURD_CYC_N),
 
 	.pa(PA),
 	.pard_n(PARD_N),
@@ -249,6 +254,7 @@ DSP_LHRomMap #(.USE_DSPn(USE_DSPn)) DSP_LHRomMap
 	.bsram_ce_n(DLH_BSRAM_CE_N),
 	.bsram_oe_n(DLH_BSRAM_OE_N),
 	.bsram_we_n(DLH_BSRAM_WE_N),
+	.bsram_rd_n(DLH_BSRAM_RD_N),
 
 	.map_ctrl(ROM_TYPE),
 	.rom_mask(ROM_MASK),
@@ -599,6 +605,7 @@ always @(*) begin
 			BSRAM_CE_N = CX4_BSRAM_CE_N;
 			BSRAM_OE_N = CX4_BSRAM_OE_N;
 			BSRAM_WE_N = CX4_BSRAM_WE_N;
+			BSRAM_RD_N = 0;
 			ROM_WORD   = CX4_ROM_WORD;
 		end
 
@@ -614,6 +621,7 @@ always @(*) begin
 			BSRAM_CE_N = SDD_BSRAM_CE_N;
 			BSRAM_OE_N = SDD_BSRAM_OE_N;
 			BSRAM_WE_N = SDD_BSRAM_WE_N;
+			BSRAM_RD_N = 0;
 			ROM_WORD   = SDD_ROM_WORD;
 		end
 
@@ -629,6 +637,7 @@ always @(*) begin
 			BSRAM_CE_N = GSU_BSRAM_CE_N;
 			BSRAM_OE_N = GSU_BSRAM_OE_N;
 			BSRAM_WE_N = GSU_BSRAM_WE_N;
+			BSRAM_RD_N = 0;
 			ROM_WORD   = GSU_ROM_WORD;
 		end
 
@@ -644,6 +653,7 @@ always @(*) begin
 			BSRAM_CE_N = SA1_BSRAM_CE_N;
 			BSRAM_OE_N = SA1_BSRAM_OE_N;
 			BSRAM_WE_N = SA1_BSRAM_WE_N;
+			BSRAM_RD_N = 0;
 			ROM_WORD   = SA1_ROM_WORD;
 		end
 
@@ -659,6 +669,7 @@ always @(*) begin
 			BSRAM_CE_N = SPC7110_BSRAM_CE_N;
 			BSRAM_OE_N = SPC7110_BSRAM_OE_N;
 			BSRAM_WE_N = SPC7110_BSRAM_WE_N;
+			BSRAM_RD_N = 0;
 			ROM_WORD   = SPC7110_ROM_WORD;
 		end
 
@@ -674,6 +685,7 @@ always @(*) begin
 			BSRAM_CE_N = DLH_BSRAM_CE_N;
 			BSRAM_OE_N = DLH_BSRAM_OE_N;
 			BSRAM_WE_N = DLH_BSRAM_WE_N;
+			BSRAM_RD_N = DLH_BSRAM_RD_N;
 			ROM_WORD   = DLH_ROM_WORD;
 		end
 	endcase
