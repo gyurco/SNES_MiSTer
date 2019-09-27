@@ -233,9 +233,10 @@ reg  [19:0] bsram_sd_addr;
 wire        BSRAM_CE_N;
 wire        BSRAM_OE_N;
 wire        BSRAM_WE_N;
+wire        BSRAM_RD_N;
 wire  [7:0] BSRAM_Q, BSRAM_D;
 reg   [7:0] bsram_din;
-wire        bsram_rd = ~BSRAM_CE_N & ~BSRAM_OE_N;
+wire        bsram_rd = ~BSRAM_CE_N & ~BSRAM_RD_N;
 reg         bsram_rdD;
 wire        bsram_wr = ~BSRAM_CE_N & ~BSRAM_WE_N;
 reg         bsram_wrD;
@@ -302,7 +303,7 @@ always @(negedge clk_sys) begin
 
 		bsram_rdD <= bsram_rd;
 		bsram_wrD <= bsram_wr;
-		if ((~bsram_wrD & bsram_wr) || (~bsram_rdD & bsram_rd)) begin
+		if ((bsram_rd && BSRAM_ADDR != bsram_sd_addr) || (~bsram_wrD & bsram_wr) || (~bsram_rdD & bsram_rd)) begin
 			bsram_req = ~bsram_req;
 			bsram_sd_addr <= BSRAM_ADDR;
 			bsram_din <= BSRAM_D;
@@ -345,8 +346,8 @@ sdram sdram
 	.rom_we(cart_download),
 
 	.wram_addr(wram_addr_sd),
-//	.wram_din(wram_din),
-	.wram_din(WRAM_D),
+	.wram_din(wram_din),
+//	.wram_din(WRAM_D),
 	.wram_dout(WRAM_Q),
 	.wram_req(wram_req),
 	.wram_req_ack(),
@@ -354,8 +355,8 @@ sdram sdram
 	.wram_we(wram_wrD),
 
 	.bsram_addr(bsram_sd_addr),
-//	.bsram_din(bsram_din),
-	.bsram_din(BSRAM_D),
+	.bsram_din(bsram_din),
+//	.bsram_din(BSRAM_D),
 	.bsram_dout(BSRAM_Q),
 	.bsram_req(bsram_req),
 	.bsram_req_ack(),
@@ -476,6 +477,7 @@ main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GS
 	.BSRAM_CE_N(BSRAM_CE_N),
 	.BSRAM_OE_N(BSRAM_OE_N),
 	.BSRAM_WE_N(BSRAM_WE_N),
+	.BSRAM_RD_N(BSRAM_RD_N),
 
 	.WRAM_ADDR(WRAM_ADDR),
 	.WRAM_D(WRAM_D),
