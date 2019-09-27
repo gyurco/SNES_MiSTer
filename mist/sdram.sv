@@ -37,6 +37,7 @@ module sdram (
 	// cpu/chipset interface
 	input             init_n,     // init signal after FPGA config to initialize RAM
 	input             clk,        // sdram clock
+	input             clkref,
 
 	input      [15:0] rom_din,
 	output reg [15:0] rom_dout,
@@ -139,7 +140,11 @@ localparam STATE_LAST      = 3'd7;  // last state in cycle
 reg [2:0] t;
 
 always @(posedge clk) begin
+	reg clkref_d;
+	clkref_d <= clkref;
+
 	t <= t + 1'd1;
+	if(~clkref_d && clkref && !oe_latch && !we_latch && !refresh && !init) t <= 3'd5;
 //	if (t == STATE_LAST) t <= STATE_RAS0;
 end
 
@@ -188,8 +193,8 @@ assign SDRAM_A    = sd_a;
 
 reg [24:0] addr_latch[3];
 reg [15:0] din_latch[3];
-reg        oe_latch[3];
-reg        we_latch[3];
+reg  [2:0] oe_latch;
+reg  [2:0] we_latch;
 reg  [1:0] ds[3];
 
 localparam PORT_NONE  = 3'd0;
