@@ -353,8 +353,8 @@ sdram sdram
 	.rom_we(cart_download),
 
 	.wram_addr(wram_addr_sd),
-	.wram_din(wram_din),
-//	.wram_din(WRAM_D),
+//	.wram_din(wram_din),
+	.wram_din(WRAM_D),
 	.wram_dout(WRAM_Q),
 	.wram_req(wram_req),
 	.wram_req_ack(),
@@ -362,8 +362,8 @@ sdram sdram
 	.wram_we(wram_wrD),
 
 	.bsram_addr(bsram_sd_addr),
-	.bsram_din(bsram_din),
-//	.bsram_din(BSRAM_D),
+//	.bsram_din(bsram_din),
+	.bsram_din(BSRAM_D),
 	.bsram_dout(BSRAM_Q),
 	.bsram_req(bsram_req),
 	.bsram_req_ack(),
