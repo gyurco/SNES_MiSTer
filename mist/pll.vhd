@@ -159,7 +159,7 @@ BEGIN
 		clk0_divide_by => 40,
 		clk0_duty_cycle => 50,
 		clk0_multiply_by => 191,
-		clk0_phase_shift => "-3000",
+		clk0_phase_shift => "-1600",
 		clk1_divide_by => 40,
 		clk1_duty_cycle => 50,
 		clk1_multiply_by => 191,
