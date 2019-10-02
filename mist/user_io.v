@@ -24,6 +24,8 @@
  
 module user_io #(parameter STRLEN=0, parameter PS2DIV=100) (
 	input [(8*STRLEN)-1:0] conf_str,
+	output       [9:0]  conf_str_addr, // RAM address for config string, if STRLEN=0
+	input        [7:0]  conf_str_char,
 
 	input               clk_sys, // clock for system-related messages (kbd, joy, etc...)
 	input               clk_sd,  // clock for SD-card related messages
@@ -92,6 +94,8 @@ reg [2:0] 	  bit_cnt;    // counts bits 0-7 0-7 ...
 reg [9:0]     byte_cnt;   // counts bytes
 reg [7:0] 	  but_sw;
 reg [2:0]     stick_idx;
+
+assign conf_str_addr = byte_cnt;
 
 assign buttons = but_sw[1:0];
 assign switches = but_sw[3:2];
@@ -331,7 +335,8 @@ always@(posedge spi_sck or posedge SPI_SS_IO) begin
 			spi_byte_out <= 0;
 			case({(!byte_cnt) ? {sbuf, SPI_MOSI} : cmd})
 			// reading config string
-			8'h14: if(byte_cnt < STRLEN) spi_byte_out <= conf_str[(STRLEN - byte_cnt - 1)<<3 +:8];
+			8'h14: if (STRLEN == 0) spi_byte_out <= conf_str_char; else
+			       if(byte_cnt < STRLEN) spi_byte_out <= conf_str[(STRLEN - byte_cnt - 1)<<3 +:8];
 
 			// reading sd card status
 			8'h16: if(byte_cnt == 0) begin
