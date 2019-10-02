@@ -16,6 +16,8 @@ component user_io
     port (
 	clk_sys : in std_logic;
 	clk_sd  : in std_logic := '0';
+	conf_str_addr : out std_logic_vector(9 downto 0);
+	conf_str_char : in std_logic_vector(7 downto 0);
 	SPI_CLK, SPI_SS_IO, SPI_MOSI :in std_logic;
 	SPI_MISO : out std_logic;
 	conf_str : in std_logic_vector(8*STRLEN-1 downto 0);
