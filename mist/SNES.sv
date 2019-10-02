@@ -101,6 +101,9 @@ always @(posedge clk_sys) begin
 end
 
 //////////////////   MiST I/O   ///////////////////
+wire  [9:0] conf_str_addr;
+wire  [7:0] conf_str_char;
+
 wire [31:0] joystick0;
 wire [31:0] joystick1;
 wire [31:0] joystick2;
@@ -137,7 +140,7 @@ wire        sd_buff_rd;
 wire        img_mounted;
 wire [31:0] img_size;
 
-user_io #(.STRLEN($size(CONF_STR)>>3)) user_io
+user_io user_io
 (
 	.clk_sys(clk_sys),
 	.clk_sd(clk_sys),
@@ -146,7 +149,9 @@ user_io #(.STRLEN($size(CONF_STR)>>3)) user_io
 	.SPI_MOSI(SPI_DI),
 	.SPI_MISO(SPI_DO),
 
-	.conf_str(CONF_STR),
+//	.conf_str(CONF_STR),
+	.conf_str_addr(conf_str_addr),
+	.conf_str_char(conf_str_char),
 
 	.status(status),
 	.scandoubler_disable(scandoubler_disable),
@@ -180,6 +185,7 @@ user_io #(.STRLEN($size(CONF_STR)>>3)) user_io
 
 reg [24:0] ps2_mouse;
 always @(posedge clk_sys) begin
+	conf_str_char <= CONF_STR[(($size(CONF_STR)>>3) - conf_str_addr - 1)<<3 +:8];
 	if (mouse_strobe) begin
 		ps2_mouse[24] <= ~ps2_mouse[24];
 		ps2_mouse[23:0] <= { mouse_y[7:0], mouse_x[7:0], mouse_flags };
