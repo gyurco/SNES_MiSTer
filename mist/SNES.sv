@@ -403,7 +403,8 @@ sdram sdram
 	.vram2_we(~vram2_we_nD),
 
 	.aram_addr(aram_addr_sd),
-	.aram_din(aram_din),
+//	.aram_din(aram_din),
+	.aram_din(ARAM_D),
 	.aram_dout(ARAM_Q),
 	.aram_req(aram_req),
 	.aram_req_ack(),
