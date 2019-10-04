@@ -55,6 +55,10 @@ set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|
 set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -hold -end 1
 #set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to {sdram:sdram|next_port[*][*]} -setup -end 2
 #set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to {sdram:sdram|next_port[*][*]} -hold -end 1
+set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to {sdram:sdram|din_latch[1][*]} -setup -end 3
+set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to {sdram:sdram|din_latch[1][*]} -hold -end 2
+set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to {sdram:sdram|din_latch[0][*]} -setup -end 3
+set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -to {sdram:sdram|din_latch[0][*]} -hold -end 2
 
 set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -setup -start 3
 set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|clk[1]}] -to [get_clocks {pll|altpll_component|auto_generated|pll1|clk[2]}] -hold -start 2
