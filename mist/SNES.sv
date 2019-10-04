@@ -66,6 +66,7 @@ parameter CONF_STR = {
 	"OG,Blend,On,Off;",
 	"O12,ROM Type,LoROM,HiROM,ExHiROM;",
 	"O56,Mouse,None,Port1,Port2;",
+	"OP,Super Scope,Off,Mouse;",
 	"O7,Swap Joysticks,No,Yes;",
 	"OH,Multitap,Disabled,Port2;",
 	"T0,Reset;",
@@ -80,6 +81,7 @@ wire       joy_swap = status[7];
 wire       multitap = status[17];
 wire       BLEND = ~status[16];
 wire       bk_save = status[15];
+wire       GUN_MODE = status[25];
 
 ////////////////////   CLOCKS   ///////////////////
 
@@ -242,7 +244,7 @@ wire        BSRAM_WE_N;
 wire        BSRAM_RD_N;
 wire  [7:0] BSRAM_Q, BSRAM_D;
 reg   [7:0] bsram_din;
-wire        bsram_rd = ~BSRAM_CE_N & ~BSRAM_RD_N;
+wire        bsram_rd = ~BSRAM_CE_N & (~BSRAM_RD_N || rom_type[7:4] == 4'hC);
 reg         bsram_rdD;
 wire        bsram_wr = ~BSRAM_CE_N & ~BSRAM_WE_N;
 reg         bsram_wrD;
@@ -461,13 +463,22 @@ always @(posedge clk_sys) begin
 		//DSP4
 		else if (mapper_header == 8'h30 && rom_type_header == 8'd3) rom_type[7:4] <= 4'hB;
 		//OBC1
-		//else if (mapper_header == 8'h30 && rom_type_header == 8'h25) rom_type[7:4] <= 4'hC;
+		else if (mapper_header == 8'h30 && rom_type_header == 8'h25) rom_type[7:4] <= 4'hC;
+		//GSU
+//		else if (mapper_header == 8'h20 &&
+//		    (rom_type_header == 8'h13 || rom_type_header == 8'h14 || rom_type_header == 8'h15 || rom_type_header == 8'h1a))
+//		begin
+//			rom_type[7:4] <= 4'h7;
+//			ram_mask <= (24'd1024 << 4'd6) - 1'd1;
+//		end
+		//SA1
+//		else if (mapper_header == 8'h23 && (rom_type_header == 8'h32 || rom_type_header == 8'h34 || rom_type_header == 8'h35)) rom_type[7:4] <= 4'h6;
 	end
 end
 
 ////////////////////////////  SYSTEM  ///////////////////////////////////
 
-main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GSU(1'b0), .USE_DLH(1'b1)) main
+main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GSU(1'b0), .USE_DLH(1'b1), .USE_SPC7110(1'b0)) main
 (
 	.RESET_N(~reset),
 
@@ -531,7 +542,7 @@ main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GS
 	.FIELD(),
 	.INTERLACE(),
 	.HIGH_RES(),
-	.DOTCLK(),
+	.DOTCLK(DOTCLK),
 	.DOT_CLK_CE(DOT_CLK_CE),
 
 	.HBLANKn(HBLANKn),
@@ -540,13 +551,13 @@ main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GS
 	.VSYNC(VSYNC),
 
 	.JOY1_DI(JOY1_DO),
-	.JOY2_DI(JOY2_DO),
+	.JOY2_DI(GUN_MODE ? LG_DO : JOY2_DO),
 	.JOY_STRB(JOY_STRB),
 	.JOY1_CLK(JOY1_CLK),
 	.JOY2_CLK(JOY2_CLK),
 	.JOY1_P6(JOY1_P6),
 	.JOY2_P6(JOY2_P6),
-	.JOY2_P6_in(1'b1),
+	.JOY2_P6_in(JOY2_P6_DI),
 
 	.GG_EN(0),
 	.GG_CODE(),
@@ -579,9 +590,9 @@ mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(6), .OSD_AUTO_CE(1'b0)) mist_video
 	.SPI_SS3(SPI_SS3),
 	.HSync(~HSYNC),
 	.VSync(~VSYNC),
-	.R(BLANK ? 6'd0 : R[7:2]),
-	.G(BLANK ? 6'd0 : G[7:2]),
-	.B(BLANK ? 6'd0 : B[7:2]),
+	.R(BLANK ? 6'd0 : ((LG_TARGET && GUN_MODE) ? {6{LG_TARGET[0]}} : R[7:2])),
+	.G(BLANK ? 6'd0 : ((LG_TARGET && GUN_MODE) ? {6{LG_TARGET[1]}} : G[7:2])),
+	.B(BLANK ? 6'd0 : ((LG_TARGET && GUN_MODE) ? {6{LG_TARGET[2]}} : B[7:2])),
 	.VGA_HS(VGA_HS),
 	.VGA_VS(VGA_VS),
 	.VGA_R(VGA_R),
@@ -638,6 +649,8 @@ ioport port1
 wire [1:0] JOY2_DO;
 wire       JOY2_CLK;
 wire       JOY2_P6;
+wire       JOY2_P6_DI = (LG_P6_out | !GUN_MODE);
+
 ioport port2
 (
 	.CLK(clk_sys),
@@ -656,6 +669,41 @@ ioport port2
 
 	.MOUSE(ps2_mouse),
 	.MOUSE_EN(mouse_mode[1])
+);
+
+wire       LG_P6_out;
+wire [1:0] LG_DO;
+wire [2:0] LG_TARGET;
+wire       LG_T = joy0[6] | joy1[6]; // always from joysticks
+wire       DOTCLK;
+
+lightgun lightgun
+(
+	.CLK(clk_sys),
+	.RESET(reset),
+
+	.MOUSE(ps2_mouse),
+	.MOUSE_XY(1'b1),
+
+	.JOY_X(),
+	.JOY_Y(),
+
+	.F(ps2_mouse[0]),
+	.C(ps2_mouse[1]),
+	.T(LG_T), // always from joysticks
+	.P(ps2_mouse[2] | joy0[7] | joy1), // always from joysticks and mouse
+
+	.HDE(HBLANKn),
+	.VDE(VBLANKn),
+	.CLKPIX(DOTCLK),
+
+	.TARGET(LG_TARGET),
+	.SIZE(1'b0),
+
+	.PORT_LATCH(JOY_STRB),
+	.PORT_CLK(JOY2_CLK),
+	.PORT_P6(LG_P6_out),
+	.PORT_DO(LG_DO)
 );
 
 //////////////////////////// BACKUP RAM /////////////////////
