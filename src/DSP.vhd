@@ -501,6 +501,8 @@ begin
 		variable SCALE : unsigned(3 downto 0);
 		variable SOUT : signed(15 downto 0);
 		variable P0, P1 : signed(15 downto 0);
+		variable P0x3, P1x3 : signed(17 downto 0);
+		variable P0x13 : signed(19 downto 0);
 		variable SR: signed(15 downto 0);
 		variable SF: signed(16 downto 0);
 		variable S: std_logic_vector(15 downto 0);
@@ -533,16 +535,19 @@ begin
 					
 					P0 := BRR_BUF(BDS.V)(11);
 					P1 := shift_right(BRR_BUF(BDS.V)(10), 1);
-					
+					P0x3  := (P0(15)&P0&'0') + (P0(15)&P0(15)&P0);
+					P0x13 := (P0(15)&P0&"000") + (P0(15)&P0(15)&P0&"00") + (P0(15)&P0(15)&P0(15)&P0(15)&P0);
+					P1x3  := (P1(15)&P1&'0') + (P1(15)&P1(15)&P1);
+
 					case FILTER is
 						when "00" => 
 							SF := (resize(SR, 17));
 						when "01" => 
-							SF := (resize(SR + shift_right(P0, 1) + shift_right((0-P0), 5), 17));
+							SF := (resize(SR + signed(P0(15 downto 1)) - signed(P0(15 downto 5)), 17));
 						when "10" => 
-							SF := (resize(SR + (P0*1) + shift_right(0 - (P0 + (P0*2)),6) - P1 + shift_right(P1, 4), 17));
+							SF := (resize(SR + signed(P0(15)&P0) - signed(P0x3(17 downto 6)) - P1 + signed(P1(15 downto 4)), 17));
 						when others => 
-							SF := (resize(SR + (P0*1) + shift_right(0 - (P0 + (P0*4) + (P0*8)),7) - P1 + shift_right(((P1*2) + P1),4) , 17));
+							SF := (resize(SR + signed(P0(15)&P0) - signed(P0x13(19 downto 7)) - P1 + signed(P1x3(17 downto 4)), 17));
 					end case;
 
 					SOUT := shift_left(CLAMP16(SF), 1);
