@@ -185,13 +185,12 @@ user_io user_io
 	.img_size(img_size)
 );
 
-reg [24:0] ps2_mouse;
+wire [24:0] ps2_mouse = { mouse_strobe_level, mouse_y[7:0], mouse_x[7:0], mouse_flags };
+reg         mouse_strobe_level;
+
 always @(posedge clk_sys) begin
 	conf_str_char <= CONF_STR[(($size(CONF_STR)>>3) - conf_str_addr - 1)<<3 +:8];
-	if (mouse_strobe) begin
-		ps2_mouse[24] <= ~ps2_mouse[24];
-		ps2_mouse[23:0] <= { mouse_y[7:0], mouse_x[7:0], mouse_flags };
-	end
+	if (mouse_strobe) mouse_strobe_level <= ~mouse_strobe_level;
 end
 
 data_io data_io
@@ -299,10 +298,10 @@ always @(negedge clk_sys) begin
 	end
 
 	if (reset) begin
-		aram_addr_sd <= 16'haaaa;
-		wram_addr_sd <= 17'h1aaaa;
-		vram1_addr_sd <= 15'h7fff;
-		vram2_addr_sd <= 15'h7fff;
+//		aram_addr_sd <= 16'haaaa;
+//		wram_addr_sd <= 17'h1aaaa;
+//		vram1_addr_sd <= 15'h7fff;
+//		vram2_addr_sd <= 15'h7fff;
 	end else begin
 
 		wram_rdD <= wram_rd;
