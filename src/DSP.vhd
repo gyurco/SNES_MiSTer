@@ -539,13 +539,13 @@ begin
 
 					case FILTER is
 						when "00" => 
-							SF := (resize(SR, 17));
+							SF := SR(15)&SR;
 						when "01" => 
-							SF := (resize(SR + signed(P0(15 downto 1)) - signed(P0(15 downto 5)), 17));
+							SF := signed(SR(15)&SR) + signed(P0(15 downto 1)) - signed(P0(15 downto 5));
 						when "10" => 
-							SF := (resize(SR + signed(P0(15)&P0) - signed(P0x3(17 downto 6)) - P1 + signed(P1(15 downto 4)), 17));
+							SF := signed(SR(15)&SR) + (P0 - signed(P0x3(17 downto 6))) - (P1 - signed(P1(15 downto 4)));
 						when others => 
-							SF := (resize(SR + signed(P0(15)&P0) - signed(P0x13(19 downto 7)) - P1 + signed(P1x3(17 downto 4)), 17));
+							SF := signed(SR(15)&SR) + (P0 - signed(P0x13(19 downto 7))) - (P1 - signed(P1x3(17 downto 4)));
 					end case;
 
 					SOUT := shift_left(CLAMP16(SF), 1);
