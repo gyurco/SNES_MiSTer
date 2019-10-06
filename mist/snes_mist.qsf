@@ -296,7 +296,7 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to LED
 set_global_assignment -name OPTIMIZE_POWER_DURING_FITTING OFF
 set_global_assignment -name ADV_NETLIST_OPT_SYNTH_WYSIWYG_REMAP ON
 set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
-set_global_assignment -name SEED 1
+set_global_assignment -name SEED 2
 set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS "NORMAL COMPILATION"
 set_global_assignment -name SYSTEMVERILOG_FILE SNES.sv
 set_global_assignment -name SYSTEMVERILOG_FILE sdram.sv
