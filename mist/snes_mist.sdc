@@ -66,6 +66,8 @@ set_multicycle_path -from [get_clocks {pll|altpll_component|auto_generated|pll1|
 set_multicycle_path -from {sdram:sdram|aram_dout[*]} -to {sdram:sdram|din_latch[1][*]} -setup -end 2
 set_multicycle_path -from {sdram:sdram|aram_dout[*]} -to {sdram:sdram|din_latch[1][*]} -hold -end 1
 
+set_max_delay -from {main:main|SNES:SNES|SCPU:CPU|HDMA_CH_WORK[*]} -to {sdram:sdram|din_latch[0][*]} 15.5
+
 set_false_path -to [get_ports {AUDIO_L}]
 set_false_path -to [get_ports {AUDIO_R}]
 set_false_path -to [get_ports {LED}]
