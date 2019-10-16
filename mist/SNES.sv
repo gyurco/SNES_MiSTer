@@ -403,8 +403,8 @@ sdram sdram
 	.vram2_we(~vram2_we_nD),
 
 	.aram_addr(aram_addr_sd),
-//	.aram_din(aram_din),
-	.aram_din(ARAM_D),
+	.aram_din(aram_din),
+//	.aram_din(ARAM_D),
 	.aram_dout(ARAM_Q),
 	.aram_req(aram_req),
 	.aram_req_ack(),
@@ -464,6 +464,7 @@ always @(posedge clk_sys) begin
 		else if (mapper_header == 8'h30 && rom_type_header == 8'd3) rom_type[7:4] <= 4'hB;
 		//OBC1
 		else if (mapper_header == 8'h30 && rom_type_header == 8'h25) rom_type[7:4] <= 4'hC;
+		//SDD1
 		else if (mapper_header == 8'h32 && (rom_type_header == 8'h43 || rom_type_header == 8'h45)) rom_type[7:4] <= 4'h5;
 		//GSU
 //		else if (mapper_header == 8'h20 &&

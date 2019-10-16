@@ -144,7 +144,7 @@ always @(posedge clk) begin
 	clkref_d <= clkref;
 
 	t <= t + 1'd1;
-	if(~clkref_d && clkref && !oe_latch && !we_latch && !refresh && !init) t <= 3'd5;
+	if(~clkref_d && clkref && !oe_latch && !we_latch && !refresh && !init) t <= 3'd4;
 //	if (t == STATE_LAST) t <= STATE_RAS0;
 end
 
