@@ -466,15 +466,20 @@ always @(posedge clk_sys) begin
 		else if (mapper_header == 8'h30 && rom_type_header == 8'h25) rom_type[7:4] <= 4'hC;
 		//SDD1
 		else if (mapper_header == 8'h32 && (rom_type_header == 8'h43 || rom_type_header == 8'h45)) rom_type[7:4] <= 4'h5;
+		//ST0XX
+		else if (mapper_header == 8'h30 && rom_type_header == 8'hf6) begin
+			rom_type[7:3] <= { 4'h8, 1'b1 };
+			if (rom_size < 4'd10) rom_type[5] <= 1'b1; // Hayazashi Nidan Morita Shougi
+		end
 		//GSU
-//		else if (mapper_header == 8'h20 &&
-//		    (rom_type_header == 8'h13 || rom_type_header == 8'h14 || rom_type_header == 8'h15 || rom_type_header == 8'h1a))
-//		begin
-//			rom_type[7:4] <= 4'h7;
-//			ram_mask <= (24'd1024 << 4'd6) - 1'd1;
-//		end
+		else if (mapper_header == 8'h20 &&
+		    (rom_type_header == 8'h13 || rom_type_header == 8'h14 || rom_type_header == 8'h15 || rom_type_header == 8'h1a))
+		begin
+			rom_type[7:4] <= 4'h7;
+			ram_mask <= (24'd1024 << 4'd6) - 1'd1;
+		end
 		//SA1
-//		else if (mapper_header == 8'h23 && (rom_type_header == 8'h32 || rom_type_header == 8'h34 || rom_type_header == 8'h35)) rom_type[7:4] <= 4'h6;
+		else if (mapper_header == 8'h23 && (rom_type_header == 8'h32 || rom_type_header == 8'h34 || rom_type_header == 8'h35)) rom_type[7:4] <= 4'h6;
 	end
 end
 
