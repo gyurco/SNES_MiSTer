@@ -67,7 +67,7 @@ parameter CONF_STR = {
 	"OG,Blend,On,Off;",
 	"O12,ROM Type,LoROM,HiROM,ExHiROM;",
 	"O56,Mouse,None,Port1,Port2;",
-	"OP,Super Scope,Off,Mouse;",
+	"OPQ,Lightgun,Off,Super Scope,Justifier;",
 	"O7,Swap Joysticks,No,Yes;",
 	"OH,Multitap,Disabled,Port2;",
 	"T0,Reset;",
@@ -82,7 +82,7 @@ wire       joy_swap = status[7];
 wire       multitap = status[17];
 wire       BLEND = ~status[16];
 wire       bk_save = status[15];
-wire       GUN_MODE = status[25];
+wire [1:0] GUN_MODE = status[26:25];
 
 ////////////////////   CLOCKS   ///////////////////
 
@@ -572,7 +572,7 @@ main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GS
 	.VSYNC(VSYNC),
 
 	.JOY1_DI(JOY1_DO),
-	.JOY2_DI(GUN_MODE ? LG_DO : JOY2_DO),
+	.JOY2_DI(|GUN_MODE ? LG_DO : JOY2_DO),
 	.JOY_STRB(JOY_STRB),
 	.JOY1_CLK(JOY1_CLK),
 	.JOY2_CLK(JOY2_CLK),
@@ -612,9 +612,9 @@ mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(6)) mist_video
 	.SPI_SS3(SPI_SS3),
 	.HSync(~HSYNC),
 	.VSync(~VSYNC),
-	.R(BLANK ? 6'd0 : ((LG_TARGET && GUN_MODE) ? {6{LG_TARGET[0]}} : R[7:2])),
-	.G(BLANK ? 6'd0 : ((LG_TARGET && GUN_MODE) ? {6{LG_TARGET[1]}} : G[7:2])),
-	.B(BLANK ? 6'd0 : ((LG_TARGET && GUN_MODE) ? {6{LG_TARGET[2]}} : B[7:2])),
+	.R(BLANK ? 6'd0 : ((LG_TARGET && |GUN_MODE) ? {6{LG_TARGET[0]}} : R[7:2])),
+	.G(BLANK ? 6'd0 : ((LG_TARGET && |GUN_MODE) ? {6{LG_TARGET[1]}} : G[7:2])),
+	.B(BLANK ? 6'd0 : ((LG_TARGET && |GUN_MODE) ? {6{LG_TARGET[2]}} : B[7:2])),
 	.VGA_HS(VGA_HS),
 	.VGA_VS(VGA_VS),
 	.VGA_R(VGA_R),
@@ -671,7 +671,7 @@ ioport port1
 wire [1:0] JOY2_DO;
 wire       JOY2_CLK;
 wire       JOY2_P6;
-wire       JOY2_P6_DI = (LG_P6_out | !GUN_MODE);
+wire       JOY2_P6_DI = (LG_P6_out | ~|GUN_MODE);
 
 ioport port2
 (
@@ -721,6 +721,7 @@ lightgun lightgun
 
 	.TARGET(LG_TARGET),
 	.SIZE(1'b0),
+	.GUN_TYPE(GUN_MODE[1]),
 
 	.PORT_LATCH(JOY_STRB),
 	.PORT_CLK(JOY2_CLK),
