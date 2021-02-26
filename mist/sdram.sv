@@ -142,10 +142,19 @@ reg [2:0] t;
 always @(posedge clk) begin
 	reg clkref_d;
 	clkref_d <= clkref;
+	case (t)
+		3'd0: t <= 3'd1;
+		3'd1: t <= 3'd2;
+		3'd2: t <= 3'd3;
+		3'd3: t <= 3'd4;
+		3'd4: t <= 3'd5;
+		3'd5: t <= 3'd6;
+		3'd6: t <= 3'd7;
+		3'd7: t <= 3'd0;
+	endcase
 
-	t <= t + 1'd1;
 	if(~clkref_d && clkref && !oe_latch && !we_latch && !refresh && !init) t <= 3'd4;
-//	if (t == STATE_LAST) t <= STATE_RAS0;
+
 end
 
 // ---------------------------------------------------------------------
