@@ -65,7 +65,7 @@ parameter CONF_STR = {
 	"OE,Video Region,NTSC,PAL;",
 	"OAB,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;",
 	"OG,Blend,On,Off;",
-	"O12,ROM Type,LoROM,HiROM,ExHiROM;",
+	"O12,ROM Type,LoROM,HiROM,ExHiROM,Auto;",
 	"O56,Mouse,None,Port1,Port2;",
 	"OPQ,Lightgun,Off,Super Scope,Justifier;",
 	"O7,Swap Joysticks,No,Yes;",
@@ -444,25 +444,47 @@ wire [8:0] hdr_prefix = LHRom_type == 2 ? { 8'h40, 1'b1 } : // ExHiROM
 						9'd0; // LoROM
 
 always @(posedge clk_sys) begin
-	reg [3:0] ram_size;
+    reg [3:0] ram_size;
 
-	if (cart_download) begin
-		if(ioctl_wrD ^ ioctl_wr) begin
-			if (ioctl_addr == 0) begin
-				ram_size <= 4'h0;
-				rom_type <= { 6'd0, LHRom_type };
-			end
+    if (cart_download) begin
+        if(ioctl_wrD ^ ioctl_wr) begin
+            if (ioctl_addr == 0) begin
+                ram_size <= 4'h0;
+                rom_type <= { 6'd0, LHRom_type };
+            end
 
-			if(ioctl_addr_adj == { hdr_prefix, 15'h7FD4 }) mapper_header <= ioctl_dout[15:8];
-			if(ioctl_addr_adj == { hdr_prefix, 15'h7FD6 }) { rom_size, rom_type_header } <= ioctl_dout[11:0];
-			if(ioctl_addr_adj == { hdr_prefix, 15'h7FD8 }) ram_size <= ioctl_dout[3:0];
-			if(ioctl_addr_adj == { hdr_prefix, 15'h7FDA }) company_header <= ioctl_dout[7:0];
+            if(LHRom_type == 3) //Auto, we will try to auto-detect 
+            begin
+                
+                if(ioctl_addr_adj == 25'h007FD4 ) mapper_header <= ioctl_dout[15:8]; // 0x20, 0x30 or 0x32
+                if(ioctl_addr_adj == 25'h007FD6 ) { rom_size, rom_type_header } <= ioctl_dout[11:0];
+                if(ioctl_addr_adj == 25'h007FD8 ) ram_size <= ioctl_dout[3:0];
+                if(ioctl_addr_adj == 25'h007FDA ) company_header <= ioctl_dout[7:0];
+                rom_type <= { 6'd0, 2'b00 }; // LoROM
 
-			rom_mask <= (24'd1024 << ((rom_size < 4'd7) ? 4'hC : rom_size)) - 1'd1;
-			ram_mask <= ram_size ? (24'd1024 << ram_size) - 1'd1 : 24'd0;
+                if (mapper_header != 8'h20 && mapper_header != 8'h30 && mapper_header != 8'h32 )
+                begin
+                    if(ioctl_addr_adj == 25'h00FFD4 ) mapper_header <= ioctl_dout[15:8]; // 0x21, 0x31, 0x35 or 0x25
+                    if(ioctl_addr_adj == 25'h00FFD6 ) { rom_size, rom_type_header } <= ioctl_dout[11:0];
+                    if(ioctl_addr_adj == 25'h00FFD8 ) ram_size <= ioctl_dout[3:0];
+                    if(ioctl_addr_adj == 25'h00FFDA ) company_header <= ioctl_dout[7:0];
+                    rom_type <= { 6'd0, 2'b01 }; // HiROM
+                end
 
-		end
-	end
+            end
+            else
+            begin //no auto-detection, some mode was selected on menu
+                if(ioctl_addr_adj == { hdr_prefix, 15'h7FD4 }) mapper_header <= ioctl_dout[15:8];
+                if(ioctl_addr_adj == { hdr_prefix, 15'h7FD6 }) { rom_size, rom_type_header } <= ioctl_dout[11:0];
+                if(ioctl_addr_adj == { hdr_prefix, 15'h7FD8 }) ram_size <= ioctl_dout[3:0];
+                if(ioctl_addr_adj == { hdr_prefix, 15'h7FDA }) company_header <= ioctl_dout[7:0];
+            end 
+
+            rom_mask <= (24'd1024 << ((rom_size < 4'd7) ? 4'hC : rom_size)) - 1'd1;
+            ram_mask <= ram_size ? (24'd1024 << ram_size) - 1'd1 : 24'd0;
+
+        end
+    end
 	else begin
 		PAL <= video_region;
 		//DSP3
