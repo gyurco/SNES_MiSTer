@@ -300,17 +300,11 @@ set_global_assignment -name SEED 4
 set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS "NORMAL COMPILATION"
 set_global_assignment -name PRE_MAPPING_RESYNTHESIS ON
 set_global_assignment -name SYSTEMVERILOG_FILE SNES.sv
+set_global_assignment -name QIP_FILE "mist-modules/mist_core.qip"
 set_global_assignment -name SYSTEMVERILOG_FILE sdram.sv
 set_global_assignment -name VERILOG_FILE data_io.v
 set_global_assignment -name SDC_FILE snes_mist.sdc
 set_global_assignment -name VERILOG_FILE hybrid_pwm_sd.v
-set_global_assignment -name SYSTEMVERILOG_FILE rgb2ypbpr.sv
-set_global_assignment -name VERILOG_FILE "mist-modules/user_io.v"
-set_global_assignment -name VERILOG_FILE "mist-modules/scandoubler.v"
-set_global_assignment -name VERILOG_FILE "mist-modules/osd.v"
-set_global_assignment -name VHDL_FILE "mist-modules/mist.vhd"
-set_global_assignment -name VERILOG_FILE "mist-modules/mist_video.v"
-set_global_assignment -name SYSTEMVERILOG_FILE "mist-modules/cofi.sv"
 set_global_assignment -name QIP_FILE pll.qip
 set_global_assignment -name VHDL_FILE ../bram_no_sld_hub.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE ../rtl/lightgun.sv
