@@ -588,6 +588,9 @@ main #(.USE_DSPn(1'b1), .USE_CX4(1'b0), .USE_SDD1(1'b0), .USE_SA1(1'b0), .USE_GS
 	.TURBO(1'b0),
 	.TURBO_ALLOW(),
 
+	.DBG_BG_EN(5'b11111),
+	.DBG_CPU_EN(1'b1),
+
 	.AUDIO_L(audioL),
 	.AUDIO_R(audioR)
 );
