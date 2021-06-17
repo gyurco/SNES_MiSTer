@@ -135,7 +135,7 @@ always @(posedge clk_sys) begin
 	spi_transfer_endD <= spi_transfer_end_r;
 	spi_transfer_end <= spi_transfer_endD;
 
-	if (~spi_transfer_endD & spi_transfer_end) begin
+	if (spi_transfer_end) begin
 		abyte_cnt <= 0;
 	end else if (spi_receiver_strobeD ^ spi_receiver_strobe) begin
 		if(~&abyte_cnt) abyte_cnt <= abyte_cnt + 1'd1;
@@ -194,7 +194,7 @@ always @(posedge clk_sys) begin
 	spi_transfer_end2D <= spi_transfer_end2_r;
 	spi_transfer_end2 <= spi_transfer_end2D;
 
-	if (~spi_transfer_end2D & spi_transfer_end2) begin
+	if (spi_transfer_end2) begin
 		bytecnt <= 0;
 	end else if (spi_receiver_strobe2D ^ spi_receiver_strobe2) begin
 		bytecnt <= bytecnt + 1'd1;
