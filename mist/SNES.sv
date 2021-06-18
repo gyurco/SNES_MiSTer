@@ -224,9 +224,15 @@ reg  [23:1] rom_addr_sd;
 wire        ROM_CE_N;
 wire        ROM_OE_N;
 wire        ROM_WORD;
-wire [15:0] ROM_Q = (ROM_WORD || ~ROM_ADDR[0]) ? rom_dout : { rom_dout[7:0], rom_dout[15:8] };
-wire [15:0] rom_dout;
-reg         rom_req;
+wire [15:0] ROM_Q = (ROM_WORD || ~ROM_ADDR[0]) ? cpu_port0 : { cpu_port0[7:0], cpu_port0[15:8] };
+wire [15:0] cpu_port0;
+wire [15:0] cpu_port1;
+reg         cpu_port;
+reg         cpu_req;
+reg   [1:0] cpu_ds;
+reg  [15:0] cpu_din;
+reg  [23:1] cpu_addr_sd;
+reg         cpu_we;
 
 wire [16:0] WRAM_ADDR;
 reg  [16:0] wram_addr_sd;
@@ -234,15 +240,12 @@ wire        WRAM_CE_N;
 wire        WRAM_OE_N;
 wire        WRAM_RD_N;
 wire        WRAM_WE_N;
-wire  [7:0] WRAM_Q = WRAM_ADDR[0] ? wram_dout[15:8] : wram_dout[7:0];
+wire  [7:0] WRAM_Q = WRAM_ADDR[0] ? cpu_port1[15:8] : cpu_port1[7:0];
 wire  [7:0] WRAM_D;
-reg   [7:0] wram_din;
-wire [15:0] wram_dout;
 wire        wram_rd = ~WRAM_CE_N & ~WRAM_RD_N;
 reg         wram_rdD;
 wire        wram_wr = ~WRAM_CE_N & ~WRAM_WE_N;
 reg         wram_wrD;
-wire        wram_req;
 
 wire [19:0] BSRAM_ADDR;
 reg  [19:0] bsram_sd_addr;
@@ -305,10 +308,27 @@ always @(negedge clk_sys) begin
 
 	ioctl_wr_last <= ioctl_wr;
 
+	wram_rdD <= wram_rd;
+	wram_wrD <= wram_wr;
+
 	if ((~cart_download && ~ROM_CE_N /*&& ~ROM_OE_N */&& rom_addr_sd != rom_addr_rw) || ((ioctl_wr_last ^ ioctl_wr) & cart_download)) begin
-		rom_req <= ~rom_req;
 		rom_addr_sd <= rom_addr_rw;
+		cpu_req <= ~cpu_req;
+		cpu_addr_sd <= rom_addr_rw;
+		cpu_we <= cart_download;
+		cpu_din <= ioctl_dout;
+		cpu_ds <= 2'b11;
+		cpu_port <= 0;
+	end else if ((wram_rd && WRAM_ADDR[16:1] != wram_addr_sd[16:1]) || (~wram_wrD & wram_wr) || (~wram_rdD & wram_rd)) begin
+		wram_addr_sd <= WRAM_ADDR;
+		cpu_req <= ~cpu_req;
+		cpu_addr_sd <= {7'b1110111, WRAM_ADDR[16:1]};
+		cpu_we <= wram_wr;
+		cpu_din <= {WRAM_D, WRAM_D};
+		cpu_ds <= {WRAM_ADDR[0], ~WRAM_ADDR[0]};
+		cpu_port <= 1;
 	end
+
 
 	if (reset) begin
 //		aram_addr_sd <= 16'haaaa;
@@ -316,14 +336,6 @@ always @(negedge clk_sys) begin
 //		vram1_addr_sd <= 15'h7fff;
 //		vram2_addr_sd <= 15'h7fff;
 	end else begin
-
-		wram_rdD <= wram_rd;
-		wram_wrD <= wram_wr;
-		if ((wram_rd && WRAM_ADDR[16:1] != wram_addr_sd[16:1]) || (~wram_wrD & wram_wr) || (~wram_rdD & wram_rd)) begin
-			wram_req <= ~wram_req;
-			wram_addr_sd <= WRAM_ADDR;
-			wram_din <= WRAM_D;
-		end
 
 		bsram_rdD <= bsram_rd;
 		bsram_wrD <= bsram_wr;
@@ -365,24 +377,18 @@ sdram sdram
 	.clk(clk_mem),
 	.clkref(DOT_CLK_CE),
 
-	.rom_addr(rom_addr_sd),
-	.rom_din(ioctl_dout),
-	.rom_dout(rom_dout),
-	.rom_req(rom_req),
-	.rom_req_ack(),
-	.rom_we(cart_download),
-
-	.wram_addr(wram_addr_sd),
-//	.wram_din(wram_din),
-	.wram_din(WRAM_D),
-	.wram_dout(wram_dout),
-	.wram_req(wram_req),
-	.wram_req_ack(),
-//	.wram_we(~WRAM_WE_N),
-	.wram_we(wram_wrD),
+	.cpu_addr(cpu_addr_sd),
+	.cpu_din(cpu_din),
+	.cpu_req(cpu_req),
+	.cpu_req_ack(),
+	.cpu_we(cpu_we),
+	.cpu_ds(cpu_ds),
+	.cpu_port(cpu_port),
+	.cpu_port0(cpu_port0),
+	.cpu_port1(cpu_port1),
 
 	.bsram_addr(bsram_sd_addr),
-//	.bsram_din(bsram_din),
+//	.bsram_din(bsram_din), // OBC1 doesn't like this
 	.bsram_din(BSRAM_D),
 	.bsram_dout(bsram_dout),
 	.bsram_req(bsram_req),

@@ -39,20 +39,16 @@ module sdram (
 	input             clk,        // sdram clock
 	input             clkref,
 
-	input      [15:0] rom_din,
-	output reg [15:0] rom_dout,
-	input      [23:1] rom_addr,
-	input             rom_req,
-	output reg        rom_req_ack,
-	input             rom_we,
+	input      [15:0] cpu_din,
+	input             cpu_port,
+	output reg [15:0] cpu_port0,
+	output reg [15:0] cpu_port1,
+	input      [23:1] cpu_addr,
+	input             cpu_req,
+	output reg        cpu_req_ack,
+	input       [1:0] cpu_ds,
+	input             cpu_we,
 	
-	input      [16:0] wram_addr,
-	input       [7:0] wram_din,
-	output reg [15:0] wram_dout,
-	input             wram_req,
-	output reg        wram_req_ack,
-	input             wram_we,
-
 	input      [19:0] bsram_addr,
 	input       [7:0] bsram_din,
 	output     [15:0] bsram_dout,
@@ -207,22 +203,25 @@ reg  [2:0] oe_latch;
 reg  [2:0] we_latch;
 reg  [1:0] ds[3];
 
-localparam PORT_NONE  = 3'd0;
+localparam PORT_NONE  = 2'd0;
 
-localparam PORT_ROM   = 3'd1;
-localparam PORT_WRAM  = 3'd2;
-localparam PORT_BSRAM = 3'd3;
-localparam PORT_BSRAM_IO = 3'd4;
+localparam PORT_CPU   = 2'd1;
+localparam PORT_BSRAM = 2'd2;
+localparam PORT_BSRAM_IO = 2'd3;
 
-localparam PORT_ARAM  = 3'd1;
+localparam PORT_ARAM  = 2'd1;
 
-localparam PORT_VRAM  = 3'd1;
-localparam PORT_VRAM1 = 3'd2;
-localparam PORT_VRAM2 = 3'd3;
+localparam PORT_VRAM  = 2'd1;
+localparam PORT_VRAM1 = 2'd2;
+localparam PORT_VRAM2 = 2'd3;
 
-reg  [2:0] port[3];
-reg  [2:0] next_port[3];
+reg  [1:0] port[3];
+reg  [1:0] next_port[3];
 reg [24:0] next_addr[3];
+reg [15:0] next_din[3];
+reg  [1:0] next_ds[3];
+reg  [2:0] next_we;
+reg  [2:0] next_oe;
 
 reg        refresh;
 reg [10:0] refresh_cnt;
@@ -242,29 +241,51 @@ end
 always @(*) begin
 	next_port[0] = PORT_NONE;
 	next_addr[0] = 0;
+	next_we[0] = 0;
+	next_oe[0] = 0;
+	next_ds[0] = 0;
+	next_din[0] = 0;
 	if (refresh) next_port[0] = PORT_NONE;
-	else if (rom_req ^ rom_req_ack) begin
-		next_port[0] = PORT_ROM;
-		next_addr[0] = { 1'b0, rom_addr, 1'b0 };
-	end else if (wram_req ^ wram_req_ack) begin
-		next_port[0] = PORT_WRAM;
-		next_addr[0] = { 8'b01110111, wram_addr };
+	else if (cpu_req ^ cpu_req_ack) begin
+		next_port[0] = PORT_CPU;
+		next_addr[0] = { 1'b0, cpu_addr, 1'b0 };
+		next_din[0]  = cpu_din;
+		next_ds[0]   = cpu_ds;
+		next_we[0]   = cpu_we;
+		next_oe[0]   = ~cpu_we;
 	end else if (bsram_req ^ bsram_req_ack) begin
 		next_port[0] = PORT_BSRAM;
 		next_addr[0] = { 5'b01111, bsram_addr };
+		next_din[0] = { bsram_din, bsram_din };
+		next_ds[0] = {bsram_addr[0], ~bsram_addr[0]};
+		next_we[0] = bsram_we;
+		next_oe[0] = ~bsram_we;
 	end else if (bsram_io_req ^ bsram_io_req_ack) begin
 		next_port[0] = PORT_BSRAM_IO;
 		next_addr[0] = { 5'b01111, bsram_io_addr, 1'b0 };
+		next_we[0] = bsram_io_we;
+		next_oe[0] = ~bsram_io_we;
+		next_din[0] = bsram_io_din;
+		next_ds[0] = 2'b11;
 	end
 end
 
 // ARAM: bank 2
 always @(posedge clk) begin
 	next_port[1] <= PORT_NONE;
+	next_addr[1] = 0;
+	next_we[1] = 0;
+	next_oe[1] = 0;
+	next_ds[1] = 0;
+	next_din[1] = 0;
 	if (refresh) next_port[1] <= PORT_NONE;
 	else if (aram_req ^ aram_req_ack) begin
 		next_port[1] <= PORT_ARAM;
 		next_addr[1] <= { 9'b101111000, aram_addr };
+		next_we[1] <= aram_we;
+		next_oe[1] <= ~aram_we;
+		next_din[1] <= { aram_din, aram_din };
+		next_ds[1] <= {aram_addr[0], ~aram_addr[0]};
 	end
 end
 
@@ -272,17 +293,33 @@ end
 always @(*) begin
 	next_port[2] = PORT_NONE;
 	next_addr[2] = 0;
+	next_we[2] = 0;
+	next_oe[2] = 0;
+	next_din[2] = 0;
+	next_ds[2] = 0;
 	if ((vram1_req ^ vram1_ack) && (vram2_req ^ vram2_ack) && (vram1_addr == vram2_addr) && (vram1_we == vram2_we))
 	begin
 		// 16 bit VRAM access
 		next_port[2] = PORT_VRAM;
 		next_addr[2] = { 9'b111111100, vram1_addr, 1'b0 };
+		next_we[2] = vram1_we;
+		next_oe[2] = ~vram1_we;
+		next_din[2] = { vram2_din, vram1_din };
+		next_ds[2] = 2'b11;
 	end else if (vram1_req ^ vram1_ack) begin
 		next_port[2] = PORT_VRAM1;
 		next_addr[2] = { 9'b111111100, vram1_addr, 1'b0 };
+		next_we[2] = vram1_we;
+		next_oe[2] = ~vram1_we;
+		next_din[2] = { vram1_din, vram1_din };
+		next_ds[2] = 2'b01;
 	end else if (vram2_req ^ vram2_ack) begin
 		next_port[2] = PORT_VRAM2;
 		next_addr[2] = { 9'b111111100, vram2_addr, 1'b0 };
+		next_we[2] = vram2_we;
+		next_oe[2] = ~vram2_we;
+		next_din[2] = { vram2_din, vram2_din };
+		next_ds[2] = 2'b10;
 	end
 end
 
@@ -326,68 +363,26 @@ always @(posedge clk) begin
 		// RAS phase
 		// bank 0,1 - ROM, WRAM
 		if(t == STATE_RAS0) begin
-
 			port[0] <= next_port[0];
+			{ we_latch[0], oe_latch[0] } <= { next_we[0], next_oe[0] };
 			addr_latch[0] <= next_addr[0];
 			sd_a <= next_addr[0][22:10];
 			SDRAM_BA <= next_addr[0][24:23];
-			{ we_latch[0], oe_latch[0] } <= 2'b00;
-
-			case (next_port[0])
-			PORT_ROM: begin
-				{ we_latch[0], oe_latch[0] } <= { rom_we, ~rom_we };
-				din_latch[0] <= rom_din;
-				ds[0] <= 2'b11;
-				sd_cmd <= CMD_ACTIVE;
-			end
-
-			PORT_WRAM: begin
-				{ we_latch[0], oe_latch[0] } <= { wram_we, ~wram_we };
-				din_latch[0] <= { wram_din, wram_din };
-				ds[0] <= {next_addr[0][0], ~next_addr[0][0]};
-				sd_cmd <= CMD_ACTIVE;
-			end
-
-			PORT_BSRAM: begin
-				{ we_latch[0], oe_latch[0] } <= { bsram_we, ~bsram_we };
-				din_latch[0] <= { bsram_din, bsram_din };
-				ds[0] <= {next_addr[0][0], ~next_addr[0][0]};
-				sd_cmd <= CMD_ACTIVE;
-			end
-
-			PORT_BSRAM_IO: begin
-				{ we_latch[0], oe_latch[0] } <= { bsram_io_we, ~bsram_io_we };
-				din_latch[0] <= bsram_io_din;
-				ds[0] <= 2'b11;
-				sd_cmd <= CMD_ACTIVE;
-			end
-
-			default: ;
-
-			endcase
+			din_latch[0] <= next_din[0];
+			ds[0] <= next_ds[0];
+			if (next_port[0] != PORT_NONE) sd_cmd <= CMD_ACTIVE;
 		end
 
 		// bank 2 - ARAM
 		if(t == STATE_RAS1) begin
-
 			port[1] <= next_port[1];
+			{ we_latch[1], oe_latch[1] } <= { next_we[1], next_oe[1] };
 			addr_latch[1] <= next_addr[1];
 			sd_a <= next_addr[1][22:10];
 			SDRAM_BA <= 2'b10;
-			{ we_latch[1], oe_latch[1] } <= 2'b00;
-
-			case (next_port[1])
-			PORT_ARAM: begin
-				{ we_latch[1], oe_latch[1] } <= { aram_we, ~aram_we };
-				din_latch[1] <= { aram_din, aram_din };
-				ds[1] <= {next_addr[1][0], ~next_addr[1][0]};
-				sd_cmd <= CMD_ACTIVE;
-			end
-
-			default: ;
-
-			endcase
-
+			din_latch[1] <= next_din[1];
+			ds[1] <= next_ds[1];
+			if (next_port[1] != PORT_NONE) sd_cmd <= CMD_ACTIVE;
 		end
 
 		// bank3 - VRAM
@@ -395,43 +390,18 @@ always @(posedge clk) begin
 			refresh <= 1'b0;
 
 			port[2] <= next_port[2];
+			{ we_latch[2], oe_latch[2] } <= { next_we[2], next_oe[2] };
 			addr_latch[2] <= next_addr[2];
 			sd_a <= next_addr[2][22:10];
 			SDRAM_BA <= 2'b11;
-			{ we_latch[2], oe_latch[2] } <= 2'b00;
-
-			case (next_port[2])
-
-			PORT_VRAM: begin
-				{ we_latch[2], oe_latch[2] } <= { vram1_we, ~vram1_we };
-				din_latch[2] <= { vram2_din, vram1_din };
-				ds[2] <= 2'b11;
-				sd_cmd <= CMD_ACTIVE;
+			din_latch[2] <= next_din[2];
+			ds[2] <= next_ds[2];
+			if (next_port[2] != PORT_NONE) sd_cmd <= CMD_ACTIVE;
+			else if (!we_latch[0] && !oe_latch[0] && !we_latch[1] && !oe_latch[1] && need_refresh) begin
+				refresh <= 1'b1;
+				refresh_cnt <= 0;
+				sd_cmd <= CMD_AUTO_REFRESH;
 			end
-
-			PORT_VRAM1: begin
-				{ we_latch[2], oe_latch[2] } <= { vram1_we, ~vram1_we };
-				din_latch[2] <= { vram1_din, vram1_din };
-				ds[2] <= 2'b01;
-				sd_cmd <= CMD_ACTIVE;
-			end
-
-			PORT_VRAM2: begin
-				{ we_latch[2], oe_latch[2] } <= { vram2_we, ~vram2_we };
-				din_latch[2] <= { vram2_din, vram2_din };
-				ds[2] <= 2'b10;
-				sd_cmd <= CMD_ACTIVE;
-			end
-
-			default:
-				if (!we_latch[0] && !oe_latch[0] && !we_latch[1] && !oe_latch[1] && need_refresh) begin
-					refresh <= 1'b1;
-					refresh_cnt <= 0;
-					sd_cmd <= CMD_AUTO_REFRESH;
-				end
-
-			endcase
-
 		end
 
 		// CAS phase
@@ -447,8 +417,7 @@ always @(posedge clk) begin
 		end
 		if(t == STATE_CAS0) begin
 			case (port[0])
-				PORT_ROM:   rom_req_ack <= rom_req;
-				PORT_WRAM:  wram_req_ack <= wram_req;
+				PORT_CPU:   cpu_req_ack <= cpu_req;
 				PORT_BSRAM: bsram_req_ack <= bsram_req;
 				PORT_BSRAM_IO: bsram_io_req_ack <= bsram_io_req;
 				default: ;
@@ -491,8 +460,7 @@ always @(posedge clk) begin
 		if(t == STATE_DS0 && oe_latch[0]) { SDRAM_DQMH, SDRAM_DQML } <= 2'b00;
 		if(t == STATE_READ0 && oe_latch[0]) begin
 			case (port[0])
-				PORT_ROM:   rom_dout <= sd_din;
-				PORT_WRAM:  wram_dout <= sd_din;
+				PORT_CPU:   if (cpu_port) cpu_port1 <= sd_din; else cpu_port0 <= sd_din;
 				PORT_BSRAM: bsram_dout_reg <= sd_din;
 				PORT_BSRAM_IO: bsram_io_dout <= sd_din;
 				default: ;
